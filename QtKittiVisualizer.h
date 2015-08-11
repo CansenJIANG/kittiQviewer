@@ -164,6 +164,8 @@ private slots:
 
     void on_addRegistScene_clicked();
 
+    void on_nScenesRansac_clicked();
+
 private:
 
     int parseCommandLineOptions(int argc, char** argv);
