@@ -82,13 +82,12 @@ public:
                                  int &inlrNb);
 
     void normalizePointClouds(PointCloudT::Ptr &corrRef,
-                              PointCloudT::Ptr &corrNew,
                               Eigen::Matrix4f &transMat);
     void getRTGeometricLinearSystem(PointCloudT::Ptr corrRef,
                                     PointCloudT::Ptr corrNew,
                                     Eigen::Matrix4f &transMat);
     void randIdx(int idxRange, int sampleNb, std::time_t t, std::set<int>& randSmp);
-    void getMaxIdx(const std::vector<int> vec, int maxIdx);
+    void getMaxIdx(const std::vector<int> vec, int &maxIdx);
 };
 
 #endif // POINTCLOUDPROCESSING_H

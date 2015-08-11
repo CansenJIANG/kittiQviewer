@@ -27,6 +27,16 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="1">
+     <widget class="QVTKWidget" name="qvtkWidget_pclViewer" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+    </item>
     <item row="0" column="0">
      <widget class="QGroupBox" name="groupBox">
       <property name="minimumSize">
@@ -38,77 +48,11 @@
       <property name="title">
        <string>GroupBox</string>
       </property>
-      <widget class="QWidget" name="layoutWidget">
-       <property name="geometry">
-        <rect>
-         <x>17</x>
-         <y>25</y>
-         <width>231</width>
-         <height>176</height>
-        </rect>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_sliders">
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_dataSet">
-          <item>
-           <widget class="QLabel" name="label_dataSet">
-            <property name="text">
-             <string>Data set:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QSlider" name="slider_dataSet">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_frame">
-          <item>
-           <widget class="QLabel" name="label_frame">
-            <property name="text">
-             <string>Frame:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QSlider" name="slider_frame">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_tracklet">
-          <item>
-           <widget class="QLabel" name="label_tracklet">
-            <property name="text">
-             <string>Tracklet:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QSlider" name="slider_tracklet">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
       <widget class="QSplitter" name="splitter">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>146</y>
+         <y>100</y>
          <width>235</width>
          <height>88</height>
         </rect>
@@ -152,125 +96,50 @@
         </property>
        </widget>
       </widget>
-      <widget class="QSplitter" name="splitter_2">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>280</y>
-         <width>127</width>
-         <height>111</height>
-        </rect>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <widget class="QPushButton" name="loadPc">
-        <property name="text">
-         <string>LoadPointCloud</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="loadTrkPts">
-        <property name="text">
-         <string>Load Trk Points</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="loadTrkPtColor">
-        <property name="text">
-         <string>Load Trk Pts Color</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="clearTrkPts">
-        <property name="text">
-         <string>Clear Trk Points</string>
-        </property>
-       </widget>
-      </widget>
-      <widget class="QSplitter" name="splitter_3">
-       <property name="geometry">
-        <rect>
-         <x>140</x>
-         <y>340</y>
-         <width>108</width>
-         <height>51</height>
-        </rect>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <widget class="QPushButton" name="addPc">
-        <property name="text">
-         <string>Add Pt Cloud</string>
-        </property>
-       </widget>
-       <widget class="QPushButton" name="deletePc">
-        <property name="text">
-         <string>Delete Pc</string>
-        </property>
-       </widget>
-      </widget>
-      <widget class="QComboBox" name="colorOpt">
-       <property name="geometry">
-        <rect>
-         <x>150</x>
-         <y>310</y>
-         <width>85</width>
-         <height>27</height>
-        </rect>
-       </property>
-       <item>
-        <property name="text">
-         <string>Height</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Red</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Green</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Blue</string>
-        </property>
-       </item>
-      </widget>
-      <widget class="QPushButton" name="addTrkPts">
-       <property name="geometry">
-        <rect>
-         <x>10</x>
-         <y>390</y>
-         <width>99</width>
-         <height>27</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Add Trk Points</string>
-       </property>
-      </widget>
       <widget class="QGroupBox" name="groupBox_2">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>430</y>
-         <width>241</width>
-         <height>311</height>
+         <y>350</y>
+         <width>240</width>
+         <height>291</height>
         </rect>
        </property>
+       <property name="minimumSize">
+        <size>
+         <width>240</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>240</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="title">
-        <string>GroupBox</string>
+        <string>2 Scenes Registration</string>
        </property>
        <widget class="QSplitter" name="splitter_4">
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>20</y>
-          <width>220</width>
-          <height>27</height>
+          <y>19</y>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -289,11 +158,23 @@
        <widget class="QSplitter" name="splitter_5">
         <property name="geometry">
          <rect>
-          <x>10</x>
+          <x>0</x>
           <y>50</y>
-          <width>211</width>
-          <height>27</height>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -320,9 +201,21 @@
          <rect>
           <x>0</x>
           <y>80</y>
-          <width>221</width>
-          <height>27</height>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -347,11 +240,23 @@
        <widget class="QSplitter" name="splitter_7">
         <property name="geometry">
          <rect>
-          <x>10</x>
+          <x>0</x>
           <y>110</y>
-          <width>213</width>
-          <height>27</height>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -370,27 +275,26 @@
          </property>
         </widget>
        </widget>
-       <widget class="QPushButton" name="addFoV3d2d">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>180</y>
-          <width>99</width>
-          <height>27</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>add FoV3d2d</string>
-        </property>
-       </widget>
        <widget class="QSplitter" name="splitter_8">
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>150</y>
-          <width>221</width>
-          <height>27</height>
+          <y>140</y>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -406,27 +310,26 @@
          </property>
         </widget>
        </widget>
-       <widget class="QPushButton" name="load2scenes">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>210</y>
-          <width>111</width>
-          <height>27</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>load 2 Scenes</string>
-        </property>
-       </widget>
        <widget class="QSplitter" name="splitter_9">
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>240</y>
-          <width>241</width>
-          <height>27</height>
+          <y>230</y>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -456,10 +359,22 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>270</y>
-          <width>241</width>
-          <height>27</height>
+          <y>260</y>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -471,7 +386,7 @@
         </widget>
         <widget class="QLineEdit" name="inlrThdRansac">
          <property name="text">
-          <string>0.01</string>
+          <string>0.02</string>
          </property>
         </widget>
         <widget class="QLabel" name="label_7">
@@ -481,47 +396,418 @@
         </widget>
         <widget class="QLineEdit" name="maxIterRansac">
          <property name="text">
-          <string>5</string>
+          <string>500</string>
          </property>
         </widget>
        </widget>
-       <widget class="QPushButton" name="register2scenes">
+       <widget class="QSplitter" name="splitter_17">
         <property name="geometry">
          <rect>
-          <x>110</x>
-          <y>210</y>
-          <width>121</width>
-          <height>27</height>
+          <x>0</x>
+          <y>170</y>
+          <width>240</width>
+          <height>25</height>
          </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="addFoV3d2d">
+         <property name="text">
+          <string>add FoV3d2d</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="showMot">
+         <property name="text">
+          <string>Show Mot.</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_18">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>200</y>
+          <width>240</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>240</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="load2scenes">
+         <property name="text">
+          <string>load 2 Scenes</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="register2scenes">
+         <property name="text">
+          <string>Rigist. Ransac</string>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+      <widget class="QGroupBox" name="groupBox_3">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>200</y>
+         <width>241</width>
+         <height>141</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>Point Cloud Processing</string>
+       </property>
+       <widget class="QSplitter" name="splitter_2">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>20</y>
+          <width>231</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="loadPc">
+         <property name="text">
+          <string>LoadPointCloud</string>
+         </property>
+        </widget>
+        <widget class="QComboBox" name="colorOpt">
+         <item>
+          <property name="text">
+           <string>Height</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Red</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Green</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Blue</string>
+          </property>
+         </item>
+        </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_3">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>49</y>
+          <width>231</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="loadTrkPts">
+         <property name="text">
+          <string>Load Trk Points</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="addPc">
+         <property name="text">
+          <string>Add Pt Cloud</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_15">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>78</y>
+          <width>231</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="loadTrkPtColor">
+         <property name="text">
+          <string>Load Trk Pts Color</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="deletePc">
+         <property name="text">
+          <string>Delete Pc</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_16">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>110</y>
+          <width>231</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="addTrkPts">
+         <property name="text">
+          <string>Add Trk Points</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="clearTrkPts">
+         <property name="text">
+          <string>Clear Trk Points</string>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+      <widget class="QGroupBox" name="groupBox_4">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>650</y>
+         <width>240</width>
+         <height>111</height>
+        </rect>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>240</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>240</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="title">
+        <string>N scenes registration</string>
+       </property>
+       <widget class="QPushButton" name="nScenesRansac">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>50</y>
+          <width>111</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>25</height>
+         </size>
         </property>
         <property name="text">
          <string>Rigist. Ransac</string>
         </property>
        </widget>
-       <widget class="QPushButton" name="showMot">
+       <widget class="QSplitter" name="splitter_19">
         <property name="geometry">
          <rect>
-          <x>110</x>
-          <y>180</y>
-          <width>99</width>
-          <height>27</height>
+          <x>0</x>
+          <y>20</y>
+          <width>240</width>
+          <height>25</height>
          </rect>
         </property>
-        <property name="text">
-         <string>Show Mot.</string>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>25</height>
+         </size>
         </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>25</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="loadRefScene">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>load Ref. Scene</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="addRegistScene">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="sizeIncrement">
+          <size>
+           <width>0</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>add New Scene</string>
+         </property>
+        </widget>
        </widget>
       </widget>
-     </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QVTKWidget" name="qvtkWidget_pclViewer" native="true">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
+      <widget class="QSplitter" name="splitter_14">
+       <property name="geometry">
+        <rect>
+         <x>19</x>
+         <y>20</y>
+         <width>211</width>
+         <height>71</height>
+        </rect>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="QSplitter" name="splitter_11">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QLabel" name="label_dataSet">
+         <property name="text">
+          <string>Data set:</string>
+         </property>
+        </widget>
+        <widget class="QSlider" name="slider_dataSet">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_12">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QLabel" name="label_frame">
+         <property name="text">
+          <string>Frame:</string>
+         </property>
+        </widget>
+        <widget class="QSlider" name="slider_frame">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_13">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QLabel" name="label_tracklet">
+         <property name="text">
+          <string>Tracklet:</string>
+         </property>
+        </widget>
+        <widget class="QSlider" name="slider_tracklet">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </widget>
+      </widget>
      </widget>
     </item>
    </layout>

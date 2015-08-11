@@ -97,6 +97,8 @@ public:
     displayPointClouds(PointCloudT::Ptr inputClouds, std::string cloudName);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr
     displayPointClouds(PointCloudT::Ptr inputClouds, std::string cloudName, int ptSize);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr
+    displayPointClouds(PointCloudT::Ptr inputClouds, std::string cloudName, int ptColor[]);
 
 public slots:
 
@@ -157,6 +159,10 @@ private slots:
     void on_maxIterRansac_editingFinished();
 
     void on_showMot_clicked();
+
+    void on_loadRefScene_clicked();
+
+    void on_addRegistScene_clicked();
 
 private:
 
