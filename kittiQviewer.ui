@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>989</width>
-    <height>833</height>
+    <height>930</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -386,7 +386,7 @@
         </widget>
         <widget class="QLineEdit" name="inlrThdRansac">
          <property name="text">
-          <string>0.02</string>
+          <string>0.05</string>
          </property>
         </widget>
         <widget class="QLabel" name="label_7">
@@ -396,7 +396,7 @@
         </widget>
         <widget class="QLineEdit" name="maxIterRansac">
          <property name="text">
-          <string>500</string>
+          <string>10000</string>
          </property>
         </widget>
        </widget>
@@ -647,7 +647,7 @@
          <x>10</x>
          <y>650</y>
          <width>240</width>
-         <height>111</height>
+         <height>211</height>
         </rect>
        </property>
        <property name="minimumSize">
@@ -665,31 +665,6 @@
        <property name="title">
         <string>N scenes registration</string>
        </property>
-       <widget class="QPushButton" name="nScenesRansac">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>50</y>
-          <width>111</width>
-          <height>25</height>
-         </rect>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>25</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>16777215</width>
-          <height>25</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Rigist. Ransac</string>
-        </property>
-       </widget>
        <widget class="QSplitter" name="splitter_19">
         <property name="geometry">
          <rect>
@@ -748,6 +723,99 @@
           <string>add New Scene</string>
          </property>
         </widget>
+       </widget>
+       <widget class="QSplitter" name="splitter_20">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>50</y>
+          <width>241</width>
+          <height>25</height>
+         </rect>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>27</height>
+         </size>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <widget class="QPushButton" name="nScenesRansac">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>25</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>rigist. Ransac</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="saveRegist">
+         <property name="text">
+          <string>save Regist. </string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QPushButton" name="seqRegist">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>80</y>
+          <width>241</width>
+          <height>27</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>sequential Registration</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="mergeSubSeq">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>110</y>
+          <width>241</width>
+          <height>27</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>merge subSequence</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="rmBadSeeds">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>180</y>
+          <width>121</width>
+          <height>27</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>removeBadSeed</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="regist2RndScenes">
+        <property name="geometry">
+         <rect>
+          <x>128</x>
+          <y>180</y>
+          <width>111</width>
+          <height>27</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>regist. 2 frame</string>
+        </property>
        </widget>
       </widget>
       <widget class="QSplitter" name="splitter_14">

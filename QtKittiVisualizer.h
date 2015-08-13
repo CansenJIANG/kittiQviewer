@@ -40,17 +40,18 @@ class KittiVisualizerQt;
 struct str_2ScenesRansac
 {
     // 2 scenes registration data
-    PointCloudT::Ptr sceneRef;
-    PointCloudT::Ptr sceneNew;
-    PointCloudT::Ptr corrRef;
-    PointCloudT::Ptr corrNew;
-    PointCloudT::Ptr motSeedsRef;
-    PointCloudT::Ptr motSeedsNew;
-    PointCloudT::Ptr sceneMotRef;
-    PointCloudT::Ptr sceneMotNew;
-    PointCloudT::Ptr sceneNoMotRef;
-    PointCloudT::Ptr sceneNoMotNew;
-    PointCloudT::Ptr registeredScene;
+    PointCloudC::Ptr sceneRef;
+    PointCloudC::Ptr sceneNew;
+    PointCloudC::Ptr corrRef;
+    PointCloudC::Ptr corrNew;
+    PointCloudC::Ptr motSeedsRef;
+    PointCloudC::Ptr motSeedsNew;
+    PointCloudC::Ptr sceneMotRef;
+    PointCloudC::Ptr sceneMotNew;
+    PointCloudC::Ptr sceneNoMotRef;
+    PointCloudC::Ptr sceneNoMotNew;
+    PointCloudC::Ptr registeredScene;
+    PointCloudC::Ptr mergedScene;
 
     // point cloud display names
     std::string sceneRefName;
@@ -71,6 +72,7 @@ struct str_2ScenesRansac
     float inlrThdRansac;
     int   maxIterRansac;
     int   sampleNbRansac;
+    int registLength;
 
     // estimated rigid transformation
     Eigen::Matrix4f transMat;
@@ -91,14 +93,15 @@ public:
     bool loadPreviousFrame();
 
     void getTrackletColor(const KittiTracklet& tracklet, int &r, int& g, int& b);
-    PointCloudT::Ptr loadPointClouds(std::string &filesName);
-    void removeMotions(PointCloudT::Ptr &scene, std::set<int> clusterIdx);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr
-    displayPointClouds(PointCloudT::Ptr inputClouds, std::string cloudName);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr
-    displayPointClouds(PointCloudT::Ptr inputClouds, std::string cloudName, int ptSize);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr
-    displayPointClouds(PointCloudT::Ptr inputClouds, std::string cloudName, int ptColor[]);
+    PointCloudC::Ptr loadPointClouds(std::string &filesName);
+    void removeMotions(PointCloudC::Ptr &scene, std::set<int> clusterIdx);
+    PointCloudC::Ptr
+    displayPointClouds(PointCloudC::Ptr inputClouds, std::string cloudName, bool heightColor);
+    PointCloudC::Ptr
+    displayPointClouds(PointCloudC::Ptr inputClouds, std::string cloudName, int ptSize);
+    PointCloudC::Ptr
+    displayPointClouds(PointCloudC::Ptr inputClouds, std::string cloudName, int ptColor[]);
+    void voxelDensityFiltering(PointCloudC::Ptr& registeredScene);
 
 public slots:
 
@@ -166,6 +169,16 @@ private slots:
 
     void on_nScenesRansac_clicked();
 
+    void on_saveRegist_clicked();
+
+    void on_seqRegist_clicked();
+
+    void on_mergeSubSeq_clicked();
+
+    void on_rmBadSeeds_clicked();
+
+    void on_regist2RndScenes_clicked();
+
 private:
 
     int parseCommandLineOptions(int argc, char** argv);
@@ -192,10 +205,10 @@ private:
     void hidePointCloud();
     bool pointCloudVisible;
     KittiPointCloud::Ptr pointCloud;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr colorCloud;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr colorTrk;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr scene;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr seeds;
+    PointCloudC::Ptr colorCloud;
+    PointCloudC::Ptr colorTrk;
+    PointCloudC::Ptr scene;
+    PointCloudC::Ptr seeds;
     float searchRadius;
     float heightThd;
     float growSpeed;
