@@ -33,7 +33,7 @@ void PointCloudProcessing::getKnnRadius(const PointCloudC::Ptr &cloud,
 }
 
 void PointCloudProcessing::removeBadSeed(PointCloudC::Ptr &cloud,
-                                        const f32 searchRadius)
+                                         const f32 searchRadius)
 {
     //    std::cout<<"search radius: "<<searchRadius<<std::endl;
     pcl::KdTreeFLANN<PointC> kdTree;
@@ -47,24 +47,24 @@ void PointCloudProcessing::removeBadSeed(PointCloudC::Ptr &cloud,
         knnIdx.clear(); knnDist.clear();
         PointC pQuery = cloud->points.at(i);
         kdTree.radiusSearch(pQuery, searchRadius, knnIdx, knnDist);
-//        std::cout<<"knnIdx size: "<<knnIdx.size()<<std::endl;
+        //        std::cout<<"knnIdx size: "<<knnIdx.size()<<std::endl;
         if(knnIdx.size()<2)
         {
             badSeedIdx.insert(i);
             cloud->points.at(i).r = 0;
             cloud->points.at(i).g = 255;
             cloud->points.at(i).b = 0;
-//            std::cout<<"bad seed found ...\n";
-//            std::cout<<"bad seed pos: "<<knnIdx[1]<<"\n";
+            std::cout<<"bad seed found ...\n";
+            //            std::cout<<"bad seed pos: "<<knnIdx[1]<<"\n";
 
         }
     }
     std::set<int>::iterator iter = badSeedIdx.end();
-//    std::cout<<"seed size before: "<<cloud->points.size()<<"\n";
+    //    std::cout<<"seed size before: "<<cloud->points.size()<<"\n";
     for(int i=0; i<badSeedIdx.size(); i++)
     {
         --iter;
-//        std::cout<<"bad seed pos: "<<*iter<<"\t";
+        //        std::cout<<"bad seed pos: "<<*iter<<"\t";
         cloud->points.erase(cloud->points.begin()+*iter);
         --cloud->width;
     }
@@ -110,7 +110,7 @@ void PointCloudProcessing::pclRegionGrow(PointCloudC::Ptr scene,
         for(int i=0; i<newSeedIdx.size(); i++, newSeedIdxIter++)
         {
             PointC newSeed = scene->points.at(*newSeedIdxIter);
-            if(newSeed.z > heightThd+0.5*searchRadius)
+            if(newSeed.z > heightThd+searchRadius)
             {
                 newSeeds->points.push_back(newSeed);
             }
@@ -218,9 +218,9 @@ void PointCloudProcessing::register2ScenesRansac(
         PointCloudC::Ptr cloudOut)
 {
     int corrSize = corrRef->points.size();
-    //    std::cout<<"corrSize: "<<corrSize<<std::endl;
-    //    std::cout<<"inlrThd: "<<sampleNb*inlrRate<<std::endl;
-    //    std::cout<<"maxIter: "<<maxIter<<std::endl;
+    std::cout<<"corrSize: "<<corrSize<<"corrSize: "<<corrNew->points.size()<<std::endl;
+    std::cout<<"inlrThd: "<<sampleNb*inlrRate<<std::endl;
+    std::cout<<"maxIter: "<<maxIter<<std::endl;
     std::vector<int> inlrNbAll;
     std::vector<Eigen::Matrix4f> transMatAll;
     std::vector<std::vector<int> > inlrIdxAll;
@@ -239,22 +239,24 @@ void PointCloudProcessing::register2ScenesRansac(
         std::vector<int> inlrIdx;
         getTransform3dGeometric(corrRef, corrNew, sampleIdx, inlrThd,\
                                 transMat, transDist, inlrIdx, inlrNb);
-        //        std::cout<<"inlrIdx size"<<inlrIdx.size()<<"\n";
+//        std::cout<<"inlrIdx size"<<inlrIdx.size()<<"\n";
         //        std::cout<<"get transform iter done...\n";
         inlrNbAll.push_back(inlrNb);
         transMatAll.push_back(transMat);
         inlrIdxAll.push_back(inlrIdx);
         ++iter;
-        //        std::cout<<"inlrNb: "<<inlrNb<<"\t";
+//        std::cout<<"inlrNb: "<<inlrNb<<"\t";
     }
     // 3. choose the coef with the most inliers
     /// Ransac refinement
-    {   int bestSmp = 0;
-        getMaxIdx(inlrNbAll, bestSmp);
-        //    std::cout<<"best sample idx: "<<bestSmp<<"\n";
-        std::cout<<"best sample inliers number: "<<inlrNbAll.at(bestSmp)<<"\n";
-        std::cout<<"before ransac refinement: "<< transMatAll.at(bestSmp)<<"\n";
-        std::vector<int> bestInlrIdx = inlrIdxAll.at(bestSmp);
+    int bestSmp = 0;
+    getMaxIdx(inlrNbAll, bestSmp);
+    //    std::cout<<"best sample idx: "<<bestSmp<<"\n";
+    std::cout<<"best sample inliers number: "<<inlrNbAll.at(bestSmp)<<"\n";
+    std::cout<<"before ransac refinement: "<< transMatAll.at(bestSmp)<<"\n";
+    std::vector<int> bestInlrIdx = inlrIdxAll.at(bestSmp);
+    if(bestInlrIdx.size()>0)
+    {
         PointCloudC::Ptr smpRef(new PointCloudC), smpNew(new PointCloudC);
         for(int i=0; i<bestInlrIdx.size(); i++)
         {
@@ -272,6 +274,8 @@ void PointCloudProcessing::register2ScenesRansac(
     // Transform point cloud
     PointCloudC::Ptr sceneNewT(new PointCloudC);
     pcl::transformPointCloud(*sceneNew, *sceneNewT, transMat);
+//    pcl::transformPointCloud(*cloudOut, *cloudOut, transMat);
+
     //    pcl::copyPointCloud(*sceneRef,*cloudOut);
     for(int i=0; i<sceneRef->points.size();i++)
     {

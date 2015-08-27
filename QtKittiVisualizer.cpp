@@ -106,6 +106,12 @@ KittiVisualizerQt::KittiVisualizerQt(QWidget *parent, int argc, char** argv) :
     connect(ui->checkBox_showTrackletPointClouds,   SIGNAL (toggled(bool)), this, SLOT (showTrackletPointCloudsToggled(bool)));
     connect(ui->checkBox_showTrackletInCenter,      SIGNAL (toggled(bool)), this, SLOT (showTrackletInCenterToggled(bool)));
 
+    // my initialization
+    init();
+}
+void KittiVisualizerQt::init()
+{
+
     colorOpt[0] = 0;
     colorOpt[1] = 0;
     colorOpt[2] = 0;
@@ -150,6 +156,9 @@ KittiVisualizerQt::KittiVisualizerQt(QWidget *parent, int argc, char** argv) :
     str2SceneRansacParams->maxIterRansac = 10000;
     str2SceneRansacParams->sampleNbRansac = 3;
     str2SceneRansacParams->registLength = 1;
+    str2SceneRansacParams->rmMotState = true;
+    ui->removeMotState->setChecked(true);
+    ui->showAxis->setChecked(true);
     str2SceneRansacParams->motIdxRef.clear();
     str2SceneRansacParams->motIdxNew.clear();
 
@@ -164,7 +173,6 @@ KittiVisualizerQt::KittiVisualizerQt(QWidget *parent, int argc, char** argv) :
             0.0, 0.0, 1.0, 0.0,
             0.0, 0.0, 0.0, 1.0;
 }
-
 KittiVisualizerQt::~KittiVisualizerQt()
 {
     delete dataset;
@@ -200,6 +208,7 @@ int KittiVisualizerQt::parseCommandLineOptions(int argc, char** argv)
     }
     return 0;
 }
+
 
 bool KittiVisualizerQt::loadNextFrame()
 {
@@ -856,8 +865,8 @@ void KittiVisualizerQt::on_loadTrkPts_clicked()
         for(int i=0; i<colorTrk->points.size();i++)
         {
             PointC *colorPt = &colorTrk->points.at(i);
-            int rgbValue[3] = {0, 0, 0};
-            getValueBetweenTwoFixedColors(colorPt->z, rgbValue[0], rgbValue[1], rgbValue[2]);
+            int rgbValue[3] = {255, 0, 0};
+            //            getValueBetweenTwoFixedColors(colorPt->x, rgbValue[0], rgbValue[1], rgbValue[2]);
             colorPt->r = int(rgbValue[0]);
             colorPt->g = int(rgbValue[1]);
             colorPt->b = int(rgbValue[2]);
@@ -875,7 +884,7 @@ void KittiVisualizerQt::on_loadTrkPts_clicked()
     }
     pclVisualizer->addPointCloud(colorTrk, "colorTrk");
     pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
-                                                    8, "colorTrk");
+                                                    3.5, "colorTrk");
     ui->qvtkWidget_pclViewer->update();
 }
 
@@ -1043,7 +1052,10 @@ void KittiVisualizerQt::on_segMovObj_clicked()
         }
         pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *scene);
         colorCloud.reset(new PointCloudC);
-        colorCloud = displayPointClouds(scene, "newPc", 0);
+        if(scene->points.at(1).r <1 && scene->points.at(1).g <1 &&
+                scene->points.at(1).b <1)
+        {    colorCloud = displayPointClouds(scene, "newPc", true);}
+        else{colorCloud = displayPointClouds(scene, "newPc", false);}
     }
 
     if(colorTrk->points.size()>1)
@@ -1073,6 +1085,30 @@ void KittiVisualizerQt::on_segMovObj_clicked()
     pclVisualizer->addPointCloud<PointC>(cloudSeg, cloudSegCH, "segMot");
     pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                     5, "segMot");
+
+    PointCloudC::Ptr seed2(new PointCloudC);
+    PointCloudC::Ptr cloudSeg2(new PointCloudC);
+    if(seed2->points.size()<1)
+    {
+        // load scene
+        QString fileName = QFileDialog::getOpenFileName(this, tr("load scene"),
+                                                        "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu", tr("Files (*.pcd)"));
+        if(fileName.size()<1)
+        {
+            std::cout<<"seed not loaded ...\n";
+            return;
+        }
+        pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *seed2);
+    }
+    segMot.removeBadSeed(seed2, searchRadius);
+    segMot.pclRegionGrow(scene, seed2, growSpeed, searchRadius, heightThd, cloudSeg2, clusterIdx);
+    std::cout<<"cluster size: "<<cloudSeg2->points.size();
+    pclVisualizer->removePointCloud("segMot2");
+    pcl::visualization::PointCloudColorHandlerCustom<PointC> cloudSegCH2(cloudSeg2, 255, 255, 0);
+    pclVisualizer->addPointCloud<PointC>(cloudSeg2, cloudSegCH2, "segMot2");
+    pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                    5, "segMot2");
+
     ui->qvtkWidget_pclViewer->update();
 }
 
@@ -1161,17 +1197,23 @@ void KittiVisualizerQt::removeMotions(PointCloudC::Ptr &scene, std::set<int> clu
 }
 
 
-void KittiVisualizerQt::on_frontView_clicked()
+void KittiVisualizerQt::on_loadColorCloud_clicked()
 {
-    for(int i=0; i<colorCloud->points.size(); i++)
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
+                                                    "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu", \
+                                                    tr("Files (*.pcd)"));
+
+    if(fileName.size()<1)
     {
-        PointC *point = &colorCloud->points.at(i);
-        if( (*point).x<=0.1 )
-        {
-            (*point).r = 0; (*point).g = 0; (*point).b = 0;
-        }
+        std::cout<<"color cloud not loaded ...\n";
+        return;
     }
-    pclVisualizer->updatePointCloud(colorCloud, "newPc");
+    colorCloud->points.clear();
+    pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *colorCloud);
+    pclVisualizer->addPointCloud(colorCloud, "colorCloud");
+    pclVisualizer->setPointCloudRenderingProperties(
+                pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "colorCloud");
+
     ui->qvtkWidget_pclViewer->update();
 }
 
@@ -1280,7 +1322,11 @@ KittiVisualizerQt::loadPointClouds(std::string &filesName)
             return addFoV3d2d;
         }
     }else{fileName = QString(filesName.c_str());}
-
+    if(fileName.size()<1)
+    {
+        std::cout<<"PointClouds not added ...\n";
+        return addFoV3d2d;
+    }
     addFoV3d2d->points.clear();
     pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *addFoV3d2d);
     int fileNamelen = fileName.toStdString().length();
@@ -1595,9 +1641,9 @@ void KittiVisualizerQt::on_saveRegist_clicked()
     std::string baseName = str2SceneRansacParams->sceneNewName.substr(0, refNameLen-4);
     char buffer[256]; sprintf(buffer, "%02d", str2SceneRansacParams->registLength + 1);
     std::string newIdx(buffer);
-    std::string saveNameRegistScene = baseName + "_len" + newIdx + ".pcd";
-    std::string saveNameTransMat = baseName + "_len" + newIdx + "_transMat.txt";
-    std::string saveNameNrmlMat  = baseName + "_len" + newIdx + "_NrmlMat.txt";
+    std::string saveNameRegistScene = baseName + "_len" + ui->catoName->text().toStdString() + newIdx + ".pcd";
+    std::string saveNameTransMat = baseName + "_len"+ ui->catoName->text().toStdString() + newIdx + "_transMat.txt";
+    std::string saveNameNrmlMat  = baseName + "_len"+ ui->catoName->text().toStdString() + newIdx + "_NrmlMat.txt";
     voxelDensityFiltering(str2SceneRansacParams->registeredScene);
     pcl::io::savePCDFileASCII(saveNameRegistScene.c_str(),
                               *str2SceneRansacParams->registeredScene);
@@ -1638,7 +1684,7 @@ void KittiVisualizerQt::voxelDensityFiltering(PointCloudC::Ptr& registeredScene)
     // Create the filtering object
     pcl::VoxelGrid<pcl::PCLPointCloud2> voxGrid;
     voxGrid.setInputCloud (filteredRegist2);
-    voxGrid.setLeafSize (0.02, 0.02, 0.02);
+    voxGrid.setLeafSize (0.01, 0.01, 0.01);
     voxGrid.filter (*filteredRegist2);
 
     std::cout<<"Registered cloud size before voxel filtering: "<<
@@ -1673,13 +1719,16 @@ void KittiVisualizerQt::on_seqRegist_clicked()
 
     // motion segmention
     PointCloudProcessing registrationObj;
-    registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsRef,searchRadius);
-    registrationObj.pclRegionGrow(str2SceneRansacParams->sceneRef,
-                                  str2SceneRansacParams->motSeedsRef,
-                                  growSpeed, searchRadius, heightThd, \
-                                  str2SceneRansacParams->sceneMotRef,
-                                  str2SceneRansacParams->motIdxRef);
-    removeMotions(str2SceneRansacParams->sceneNoMotRef, str2SceneRansacParams->motIdxRef);
+    if(str2SceneRansacParams->rmMotState)
+    {
+        registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsRef,searchRadius);
+        registrationObj.pclRegionGrow(str2SceneRansacParams->sceneRef,
+                                      str2SceneRansacParams->motSeedsRef,
+                                      growSpeed, searchRadius, heightThd, \
+                                      str2SceneRansacParams->sceneMotRef,
+                                      str2SceneRansacParams->motIdxRef);
+        removeMotions(str2SceneRansacParams->sceneNoMotRef, str2SceneRansacParams->motIdxRef);
+    }
     pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
     pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
     pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
@@ -1690,9 +1739,24 @@ void KittiVisualizerQt::on_seqRegist_clicked()
     pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotRef, *str2SceneRansacParams->sceneNoMotRef,
                              str2SceneRansacParams->normalizationMat);
 
+    // save normalization matrix
+    //    int seqLen = std::atoi(refIdx.c_str()); ++seqLen;
+    char bufr[256]; sprintf(bufr, "%02d", str2SceneRansacParams->registLength);
+    std::string seqLen(bufr);
+    std::string saveTransMatSeqTxt  = basedDir + "_" + seqLen + ui->catoName->text().toStdString() + "_TransMatSeq.txt";
+    std::ofstream saveTransMatSeq;
+    saveTransMatSeq.open(saveTransMatSeqTxt.c_str());
+    saveTransMatSeq << "\n";
     //    while(loopCondition)
     for(int i=0; i<str2SceneRansacParams->registLength; i++)
     {
+        for(int i=0; i<4; i++)
+        {
+            for(int j=0; j<4; j++)
+            {
+                saveTransMatSeq << str2SceneRansacParams->normalizationMat(i,j)<<" ";
+            }
+        }
         std::string refIdx= str2SceneRansacParams->sceneRefName.substr(fileNamelen-6, fileNamelen-5);
         basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-6);
         int rIdx = std::atoi(refIdx.c_str()); ++rIdx;
@@ -1708,14 +1772,20 @@ void KittiVisualizerQt::on_seqRegist_clicked()
         str2SceneRansacParams->motSeedsNew = loadPointClouds(str2SceneRansacParams->motSeedsNewName);
         pcl::copyPointCloud(*(str2SceneRansacParams->sceneNew),
                             *(str2SceneRansacParams->sceneNoMotNew));
-        registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsNew,searchRadius);
-        registrationObj.pclRegionGrow(str2SceneRansacParams->sceneNew,
-                                      str2SceneRansacParams->motSeedsNew,
-                                      growSpeed, searchRadius, heightThd, \
-                                      str2SceneRansacParams->sceneMotNew,
-                                      str2SceneRansacParams->motIdxNew);
 
-        removeMotions(str2SceneRansacParams->sceneNoMotNew, str2SceneRansacParams->motIdxNew);
+
+
+        if(str2SceneRansacParams->rmMotState)
+        {
+            registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsNew,searchRadius);
+            registrationObj.pclRegionGrow(str2SceneRansacParams->sceneNew,
+                                          str2SceneRansacParams->motSeedsNew,
+                                          growSpeed, searchRadius, heightThd, \
+                                          str2SceneRansacParams->sceneMotNew,
+                                          str2SceneRansacParams->motIdxNew);
+
+            removeMotions(str2SceneRansacParams->sceneNoMotNew, str2SceneRansacParams->motIdxNew);
+        }
         pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
         pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
         pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
@@ -1729,11 +1799,13 @@ void KittiVisualizerQt::on_seqRegist_clicked()
         pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
                                  str2SceneRansacParams->normalizationMat);
 
+
+
         // register 2 scenes
         registrationObj.register2ScenesRansac(str2SceneRansacParams->sceneNoMotRef,
                                               str2SceneRansacParams->sceneNoMotNew,
-                                              str2SceneRansacParams->corrRef,
-                                              str2SceneRansacParams->corrNew,
+                                              /*corrRefTmp,//*/str2SceneRansacParams->corrRef,
+                                              /*corrNewTmp,//*/str2SceneRansacParams->corrNew,
                                               str2SceneRansacParams->inlrThdRansac,
                                               str2SceneRansacParams->sampleNbRansac,
                                               str2SceneRansacParams->inlrRateRansac,
@@ -1781,6 +1853,7 @@ void KittiVisualizerQt::on_seqRegist_clicked()
         std::cout<<"transMat: "<<str2SceneRansacParams->transMat<<"\n";
         //        voxelDensityFiltering(str2SceneRansacParams->registeredScene);
     }
+    saveTransMatSeq.close();
     on_saveRegist_clicked();
 }
 
@@ -1796,26 +1869,26 @@ void KittiVisualizerQt::on_mergeSubSeq_clicked()
     pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *subSeq1);
 
     // load last frame transMat
-    std::string transMatName = fileName.toStdString().substr(0, fileName.length() - 4);
-    transMatName = transMatName + "_transMat.txt";
+    std::string refTransMatName = fileName.toStdString().substr(0, fileName.length() - 4);
+    refTransMatName = refTransMatName + "_transMat.txt";
 
-    if(!fexists(transMatName.c_str()))
+    if(!fexists(refTransMatName.c_str()))
     {
-        QString transfileName;
-        transfileName = QFileDialog::getOpenFileName(this, tr("load last frame transMat ..."),
-                                                "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
-                                                tr("Files (*.txt)"));
-        transMatName = transfileName.toStdString();
+        QString refTransfileName;
+        refTransfileName = QFileDialog::getOpenFileName(this, tr("load last frame transMat ..."),
+                                                        "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                        tr("Files (*.txt)"));
+        refTransMatName = refTransfileName.toStdString();
     }
 
-    std::ifstream transMatFile(transMatName.c_str());
-    Eigen::Matrix4f transMat; transMat.setZero();
+    std::ifstream refTransMatFile(refTransMatName.c_str());
+    Eigen::Matrix4f refTransMat; refTransMat.setZero();
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
-            transMatFile >> transMat(i, j);
+            refTransMatFile >> refTransMat(i, j);
         }
     }
-    std::cout<<"loaded transMat: "<<transMat<<"\n";
+    std::cout<<"loaded refTransMat: "<<refTransMat<<"\n";
 
     // load ref frame normalization mat
     std::string refNrmlName = fileName.toStdString().substr(0, fileName.length() - 4);
@@ -1824,8 +1897,8 @@ void KittiVisualizerQt::on_mergeSubSeq_clicked()
     {
         QString refNrmlfileName;
         refNrmlfileName = QFileDialog::getOpenFileName(this, tr("load reference frame normalization Mat ..."),
-                                                "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
-                                                tr("Files (*.txt)"));
+                                                       "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                       tr("Files (*.txt)"));
         refNrmlName = refNrmlfileName.toStdString();
     }
     std::ifstream refNrmlFile(refNrmlName.c_str());
@@ -1852,8 +1925,8 @@ void KittiVisualizerQt::on_mergeSubSeq_clicked()
     {
         QString newNrmlfileName;
         newNrmlfileName = QFileDialog::getOpenFileName(this, tr("load newframe normalization Mat ..."),
-                                                "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
-                                                tr("Files (*.txt)"));
+                                                       "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                       tr("Files (*.txt)"));
         newNrmlName = newNrmlfileName.toStdString();
     }
     std::ifstream newNrmlFile(newNrmlName.c_str());
@@ -1865,16 +1938,40 @@ void KittiVisualizerQt::on_mergeSubSeq_clicked()
     }
     std::cout<<"loaded new normalization Mat: "<<newNrmlMat<<"\n";
 
+    // load last frame transMat
+    std::string newTransMatName = fileName.toStdString().substr(0, fileName.length() - 4);
+    newTransMatName = newTransMatName + "_transMat.txt";
+
+    if(!fexists(newTransMatName.c_str()))
+    {
+        QString newTransfileName;
+        newTransfileName = QFileDialog::getOpenFileName(this, tr("load new last frame transMat ..."),
+                                                        "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                        tr("Files (*.txt)"));
+        newTransMatName = newTransfileName.toStdString();
+    }
+
+    std::ifstream newTransMatFile(newTransMatName.c_str());
+    Eigen::Matrix4f newTransMat; newTransMat.setZero();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            newTransMatFile >> newTransMat(i, j);
+        }
+    }
+    std::cout<<"loaded transMat: "<<newTransMat<<"\n";
+
+
     Eigen::Matrix4f transMatTmp; transMatTmp.setZero();
     // merge point clouds taking the first frame of new sequence as reference
     // 1. inverse last frame to reference frame transformation
-    transMatTmp = transMat.inverse();
+    transMatTmp = refTransMat.inverse();
     pcl::transformPointCloud(*subSeq1, *subSeq1, transMatTmp);
-    // 2. inverse reference frame normalization
+    // 2. inverse reference frame normalization (remove normalization)
     transMatTmp = refNrmlMat.inverse();
     pcl::transformPointCloud(*subSeq1, *subSeq1, transMatTmp);
-    // 3. impose normalization with the new sequence
-    pcl::transformPointCloud(*subSeq1, *subSeq1, newNrmlMat);
+    // 3. transform to the end of new sequence as reference
+    transMatTmp = newNrmlMat;
+    pcl::transformPointCloud(*subSeq1, *subSeq1, transMatTmp);
 
     pcl::copyPointCloud(*subSeq1, *str2SceneRansacParams->mergedScene);
     for(int i=0; i<subSeq2->points.size(); i++)
@@ -1887,6 +1984,7 @@ void KittiVisualizerQt::on_mergeSubSeq_clicked()
 
     std::string mergePcName = fileName.toStdString().substr(0, fileName.length() - 4);
     mergePcName = mergePcName + "_fusions.pcd";
+    voxelDensityFiltering(str2SceneRansacParams->mergedScene);
     pcl::io::savePCDFileASCII(mergePcName.c_str(),
                               *str2SceneRansacParams->mergedScene);
 }
@@ -1947,12 +2045,12 @@ void KittiVisualizerQt::on_regist2RndScenes_clicked()
 {
 
     str2SceneRansacParams->sceneRefName = "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/people1car1_35_45/FoV3d2d_image_02_0000_45.pcd";
-    str2SceneRansacParams->sceneNewName = "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/people1car1_2exp/FoV3d2d_image_02_0000_56.pcd";
+    str2SceneRansacParams->sceneNewName = "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/people1car1_56_70/FoV3d2d_image_02_0000_56.pcd";
     str2SceneRansacParams->sceneNoMotRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
     str2SceneRansacParams->sceneNoMotNew = loadPointClouds(str2SceneRansacParams->sceneNewName);
 
     str2SceneRansacParams->motSeedsRefName = "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/people1car1_35_45/FoV3d2d_image_02_0000_45_mot.pcd";
-    str2SceneRansacParams->motSeedsNewName = "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/people1car1_2exp/FoV3d2d_image_02_0000_56_mot.pcd";
+    str2SceneRansacParams->motSeedsNewName = "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/people1car1_56_70/FoV3d2d_image_02_0000_56_mot.pcd";
     str2SceneRansacParams->motSeedsRef = loadPointClouds(str2SceneRansacParams->motSeedsRefName);
     str2SceneRansacParams->motSeedsNew = loadPointClouds(str2SceneRansacParams->motSeedsNewName);
 
@@ -2022,18 +2120,1054 @@ void KittiVisualizerQt::on_regist2RndScenes_clicked()
                                           str2SceneRansacParams->registeredScene);
     displayPointClouds(str2SceneRansacParams->registeredScene,
                        str2SceneRansacParams->registeredName.c_str(), false);
-//    displayPointClouds(str2SceneRansacParams->sceneNoMotRef,
-//                       str2SceneRansacParams->sceneRefName.c_str(), false);
-//    displayPointClouds(str2SceneRansacParams->corrRef,
-//                       str2SceneRansacParams->corrRefName.c_str(), 8);
-//    displayPointClouds(str2SceneRansacParams->sceneNoMotNew,
-//                       str2SceneRansacParams->sceneNewName.c_str(), false);
-//    displayPointClouds(str2SceneRansacParams->corrNew,
-//                       str2SceneRansacParams->corrNewName.c_str(), 8);
+    //    displayPointClouds(str2SceneRansacParams->sceneNoMotRef,
+    //                       str2SceneRansacParams->sceneRefName.c_str(), false);
+    //    displayPointClouds(str2SceneRansacParams->corrRef,
+    //                       str2SceneRansacParams->corrRefName.c_str(), 8);
+    //    displayPointClouds(str2SceneRansacParams->sceneNoMotNew,
+    //                       str2SceneRansacParams->sceneNewName.c_str(), false);
+    //    displayPointClouds(str2SceneRansacParams->corrNew,
+    //                       str2SceneRansacParams->corrNewName.c_str(), 8);
 
+
+    int refNameLen = str2SceneRansacParams->sceneRefName.length();
+    std::string baseName = str2SceneRansacParams->corrRefName.substr(0, refNameLen-4);
+    char buffer[256]; sprintf(buffer, "%02d", str2SceneRansacParams->registLength + 1);
+    std::string newIdx(buffer);
+    std::string saveNameTransMat = baseName + "_len" + newIdx + "_transMat.txt";
+    std::string saveNameNrmlMat = baseName + "_len" + newIdx + "_NrmlMat.txt";
+
+    std::string mergePcName = baseName + "_len" + newIdx + "_2RndFusions.pcd";
+    std::cout<<"mergePcName: "<<mergePcName<<"\n";
+    //    pcl::io::savePCDFileASCII(mergePcName.c_str(),
+    //                              str2SceneRansacParams->registeredScene);
+    voxelDensityFiltering(str2SceneRansacParams->registeredScene);
+    pcl::io::savePCDFileASCII(mergePcName.c_str(),
+                              *str2SceneRansacParams->registeredScene);
+
+    // save last transformation matrix
+    std::ofstream saveLastTransMat;
+    saveLastTransMat.open(saveNameTransMat.c_str());
+    for(int i=0; i<4; i++)
+    {
+        for(int j=0; j<4; j++)
+        {
+            saveLastTransMat << str2SceneRansacParams->transMat(i,j)<<" ";
+        }
+        saveLastTransMat << "\n";
+    }
+    saveLastTransMat.close();
+    // save last normalization matrix
+    std::ofstream saveLastNrmlMat;
+    saveLastNrmlMat.open(saveNameNrmlMat.c_str());
+    for(int i=0; i<4; i++)
+    {
+        for(int j=0; j<4; j++)
+        {
+            saveLastNrmlMat << str2SceneRansacParams->normalizationMat(i,j)<<" ";
+        }
+        saveLastNrmlMat << "\n";
+    }
+    saveLastNrmlMat.close();
 }
 
 void KittiVisualizerQt::on_crossMergeSubSeq_clicked()
 {
+    PointCloudC::Ptr subSeq1(new PointCloudC), subSeq2(new PointCloudC);
+    QString fileName;
+    fileName = QFileDialog::getOpenFileName(this, tr("reference scene to merge..."),
+                                            "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                            tr("Files (*.pcd)"));
 
+    if(fileName.size()<1) { std::cout<<"PointClouds not added ...\n";  return;  }
+    pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *subSeq1);
+
+    // load last frame transMat
+    std::string refTransMatName = fileName.toStdString().substr(0, fileName.length() - 4);
+    refTransMatName = refTransMatName + "_transMat.txt";
+
+    if(!fexists(refTransMatName.c_str()))
+    {
+        QString refTransfileName;
+        refTransfileName = QFileDialog::getOpenFileName(this, tr("load last frame transMat ..."),
+                                                        "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                        tr("Files (*.txt)"));
+        refTransMatName = refTransfileName.toStdString();
+    }
+
+    std::ifstream refTransMatFile(refTransMatName.c_str());
+    Eigen::Matrix4f refTransMat; refTransMat.setZero();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            refTransMatFile >> refTransMat(i, j);
+        }
+    }
+    std::cout<<"loaded refTransMat: "<<refTransMat<<"\n";
+
+    // load ref frame normalization mat
+    std::string refNrmlName = fileName.toStdString().substr(0, fileName.length() - 4);
+    refNrmlName = refNrmlName + "_NrmlMat.txt";
+    if(!fexists(refNrmlName.c_str()))
+    {
+        QString refNrmlfileName;
+        refNrmlfileName = QFileDialog::getOpenFileName(this, tr("load reference frame normalization Mat ..."),
+                                                       "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                       tr("Files (*.txt)"));
+        refNrmlName = refNrmlfileName.toStdString();
+    }
+    std::ifstream refNrmlFile(refNrmlName.c_str());
+    Eigen::Matrix4f refNrmlMat; refNrmlMat.setZero();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            refNrmlFile >> refNrmlMat(i, j);
+        }
+    }
+    std::cout<<"loaded ref normalization Mat: "<<refNrmlMat<<"\n";
+
+    // load new sequence
+    fileName = QFileDialog::getOpenFileName(this, tr("new scene to merge..."),
+                                            "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                            tr("Files (*.pcd)"));
+
+    if(fileName.size()<1) { std::cout<<"PointClouds not added ...\n";  return;  }
+    pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *subSeq2);
+
+    // load new sequence normalization mat
+    std::string newNrmlName = fileName.toStdString().substr(0, fileName.length() - 4);
+    newNrmlName = newNrmlName + "_NrmlMat.txt";
+    if(!fexists(newNrmlName.c_str()))
+    {
+        QString newNrmlfileName;
+        newNrmlfileName = QFileDialog::getOpenFileName(this, tr("load newframe normalization Mat ..."),
+                                                       "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                       tr("Files (*.txt)"));
+        newNrmlName = newNrmlfileName.toStdString();
+    }
+    std::ifstream newNrmlFile(newNrmlName.c_str());
+    Eigen::Matrix4f newNrmlMat; newNrmlMat.setZero();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            newNrmlFile >> newNrmlMat(i, j);
+        }
+    }
+    std::cout<<"loaded new normalization Mat: "<<newNrmlMat<<"\n";
+
+    // load last frame transMat
+    std::string newTransMatName = fileName.toStdString().substr(0, fileName.length() - 4);
+    newTransMatName = newTransMatName + "_transMat.txt";
+
+    if(!fexists(newTransMatName.c_str()))
+    {
+        QString newTransfileName;
+        newTransfileName = QFileDialog::getOpenFileName(this, tr("load new last frame transMat ..."),
+                                                        "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                        tr("Files (*.txt)"));
+        newTransMatName = newTransfileName.toStdString();
+    }
+
+    std::ifstream newTransMatFile(newTransMatName.c_str());
+    Eigen::Matrix4f newTransMat; newTransMat.setZero();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            newTransMatFile >> newTransMat(i, j);
+        }
+    }
+    std::cout<<"loaded transMat: "<<newTransMat<<"\n";
+
+    // load connection frames transMat
+    std::string midTransMatName = fileName.toStdString().substr(0, fileName.length() - 4);
+    midTransMatName = midTransMatName + "_midTransMat.txt";
+
+    if(!fexists(midTransMatName.c_str()))
+    {
+        QString midTransfileName;
+        midTransfileName = QFileDialog::getOpenFileName(this, tr("load connection frame transMat ..."),
+                                                        "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                        tr("Files (*.txt)"));
+        midTransMatName = midTransfileName.toStdString();
+    }
+
+    std::ifstream midTransMatFile(midTransMatName.c_str());
+    Eigen::Matrix4f midTransMat; midTransMat.setZero();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            midTransMatFile >> midTransMat(i, j);
+        }
+    }
+    std::cout<<"loaded connection transMat: "<<midTransMat<<"\n";
+
+    // load connection frames normalization Mat
+    std::string midNrmlMatName = fileName.toStdString().substr(0, fileName.length() - 4);
+    midNrmlMatName = midNrmlMatName + "_midNrmlMat.txt";
+
+    if(!fexists(midNrmlMatName.c_str()))
+    {
+        QString midNrmlfileName;
+        midNrmlfileName = QFileDialog::getOpenFileName(this, tr("load connection frame normalization Mat ..."),
+                                                       "/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/", \
+                                                       tr("Files (*.txt)"));
+        midNrmlMatName = midNrmlfileName.toStdString();
+    }
+
+    std::ifstream midNrmlMatFile(midNrmlMatName.c_str());
+    Eigen::Matrix4f midNrmlMat; midNrmlMat.setZero();
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            midNrmlMatFile >> midNrmlMat(i, j);
+        }
+    }
+    std::cout<<"loaded connection normalization Mat: "<<midNrmlMat<<"\n";
+
+
+    Eigen::Matrix4f transMatTmp; transMatTmp.setZero();
+    // merge point clouds taking the first frame of new sequence as reference
+    // 1. inverse last frame to reference frame transformation
+    transMatTmp = refTransMat.inverse();
+    pcl::transformPointCloud(*subSeq1, *subSeq1, transMatTmp);
+    // 2. inverse reference frame normalization (remove normalization)
+    transMatTmp = refNrmlMat.inverse();
+    pcl::transformPointCloud(*subSeq1, *subSeq1, transMatTmp);
+    // 3. transform to the end of new sequence as reference
+    transMatTmp = midNrmlMat;
+    pcl::transformPointCloud(*subSeq1, *subSeq1, transMatTmp);
+
+
+    // 4. inverse last frame to reference frame transformation
+    transMatTmp = newNrmlMat.inverse();
+    pcl::transformPointCloud(*subSeq2, *subSeq2, transMatTmp);
+    // 5. inverse reference frame normalization (remove normalization)
+    transMatTmp = midNrmlMat;
+    pcl::transformPointCloud(*subSeq2, *subSeq2, transMatTmp);
+    // 6. transform point cloud
+    transMatTmp = midTransMat;
+    pcl::transformPointCloud(*subSeq2, *subSeq2, transMatTmp);
+
+    pcl::copyPointCloud(*subSeq1, *str2SceneRansacParams->mergedScene);
+    for(int i=0; i<subSeq2->points.size(); i++)
+    {
+        str2SceneRansacParams->mergedScene->push_back(subSeq2->points.at(i));
+    }
+    pclVisualizer->removeAllPointClouds();
+    displayPointClouds(str2SceneRansacParams->mergedScene,
+                       "mergedScene", false);
+
+    std::string mergePcName = fileName.toStdString().substr(0, fileName.length() - 4);
+    mergePcName = mergePcName + "_crossFusions.pcd";
+
+    //    // 7. transform point cloud to new reference coordinate
+    //    // save new transformation matrix
+    //    transMatTmp = midTransMat*newTransMat;
+    //    // save last transformation matrix
+    //    std::string jointTransMatName = fileName.toStdString().substr(0, fileName.length() - 4);
+    //    jointTransMatName = jointTransMatName + "_jointTransMat.txt";
+    //    std::ofstream saveJointTransMat;
+    //    saveJointTransMat.open(jointTransMatName.c_str());
+    //    for(int i=0; i<4; i++)
+    //    {
+    //        for(int j=0; j<4; j++)
+    //        {
+    //            saveJointTransMat << transMatTmp(i,j)<<" ";
+    //        }
+    //        saveJointTransMat << "\n";
+    //    }
+    //    saveJointTransMat.close();
+
+    transMatTmp = midTransMat.inverse();
+    pcl::transformPointCloud(*str2SceneRansacParams->mergedScene,
+                             *str2SceneRansacParams->mergedScene, transMatTmp);
+    transMatTmp = midNrmlMat.inverse();
+    pcl::transformPointCloud(*str2SceneRansacParams->mergedScene,
+                             *str2SceneRansacParams->mergedScene, transMatTmp);
+    transMatTmp = newNrmlMat;
+    pcl::transformPointCloud(*str2SceneRansacParams->mergedScene,
+                             *str2SceneRansacParams->mergedScene, transMatTmp);
+
+    voxelDensityFiltering(str2SceneRansacParams->mergedScene);
+    pcl::io::savePCDFileASCII(mergePcName.c_str(),
+                              *str2SceneRansacParams->mergedScene);
+}
+
+void KittiVisualizerQt::on_removeMotState_stateChanged(int arg1)
+{
+    str2SceneRansacParams->rmMotState = ui->removeMotState->checkState();
+}
+
+void KittiVisualizerQt::on_algoReset_clicked()
+{
+    this->init();
+}
+
+void KittiVisualizerQt::on_showAxis_stateChanged(int arg1)
+{
+    if(ui->showAxis->checkState())
+    {
+        this->pclVisualizer->removeCoordinateSystem(0.0);
+    }else
+    {
+        this->pclVisualizer->addCoordinateSystem(1.0);
+    }
+}
+
+void KittiVisualizerQt::on_seqRegistMots_clicked()
+{
+    str2SceneRansacParams->sceneRefName = "load Reference Frame ...\n";
+    str2SceneRansacParams->registeredScene->points.clear();
+    // load reference scene for registration
+    str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+    str2SceneRansacParams->registLength = QInputDialog::getInt(0, "PointCloud Registration",
+                                                               "length of sequence:", 1);
+    std::cout<<"length of registration sequence: "<<str2SceneRansacParams->registLength<<"\n";
+    int fileNamelen = str2SceneRansacParams->sceneRefName.length();
+    std::string basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-4);
+    str2SceneRansacParams->corrRefName = basedDir + "_corr.pcd";
+    str2SceneRansacParams->motSeedsRefName = basedDir + "_car.pcd";
+
+    //    str2SceneRansacParams->corrRef  = loadPointClouds(str2SceneRansacParams->corrRefName);
+    str2SceneRansacParams->motSeedsRef = loadPointClouds(str2SceneRansacParams->motSeedsRefName);
+    pcl::copyPointCloud(*(str2SceneRansacParams->sceneRef),
+                        *(str2SceneRansacParams->sceneNoMotRef));
+    pcl::copyPointCloud(*(str2SceneRansacParams->motSeedsRef),*(str2SceneRansacParams->corrRef));
+
+    // motion segmention
+    PointCloudProcessing registrationObj;
+
+    registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsRef,searchRadius);
+    registrationObj.pclRegionGrow(str2SceneRansacParams->sceneRef,
+                                  str2SceneRansacParams->motSeedsRef,
+                                  growSpeed, searchRadius, heightThd, \
+                                  str2SceneRansacParams->sceneMotRef,
+                                  str2SceneRansacParams->motIdxRef);
+    removeMotions(str2SceneRansacParams->sceneNoMotRef, str2SceneRansacParams->motIdxRef);
+    pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+    pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+    pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+//    displayPointClouds(str2SceneRansacParams->sceneMotRef,"sceneMotRef",false); return;
+    registrationObj.normalizePointClouds(str2SceneRansacParams->corrRef,
+                                         str2SceneRansacParams->normalizationMat);
+    std::cout<<"normalization transmat: "<<str2SceneRansacParams->normalizationMat<<"\n";
+    pcl::transformPointCloud(*str2SceneRansacParams->sceneMotRef, *str2SceneRansacParams->sceneMotRef,
+                             str2SceneRansacParams->normalizationMat);
+
+    //    while(loopCondition)
+    for(int i=0; i<str2SceneRansacParams->registLength; i++)
+    {
+        std::string refIdx= str2SceneRansacParams->sceneRefName.substr(fileNamelen-6, fileNamelen-5);
+        basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-6);
+        int rIdx = std::atoi(refIdx.c_str()); ++rIdx;
+        char buffer[256]; sprintf(buffer, "%02d", rIdx);
+        std::string newIdx(buffer);
+        str2SceneRansacParams->sceneNewName    = basedDir + newIdx + ".pcd";
+        str2SceneRansacParams->corrNewName     = basedDir + newIdx + "_corr.pcd";
+        str2SceneRansacParams->motSeedsNewName = basedDir + newIdx + "_car.pcd";
+        str2SceneRansacParams->sceneNew = loadPointClouds(str2SceneRansacParams->sceneNewName);
+        std::cout<<"sceneNew size: "<<str2SceneRansacParams->sceneNew->points.size()<<"\n";
+
+        //        str2SceneRansacParams->corrNew = loadPointClouds(str2SceneRansacParams->corrNewName);
+        str2SceneRansacParams->motSeedsNew = loadPointClouds(str2SceneRansacParams->motSeedsNewName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneNew),
+                            *(str2SceneRansacParams->sceneNoMotNew));
+        pcl::copyPointCloud(*(str2SceneRansacParams->motSeedsNew),
+                            *(str2SceneRansacParams->corrNew));
+
+        registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsNew,searchRadius);
+        registrationObj.pclRegionGrow(str2SceneRansacParams->sceneNew,
+                                      str2SceneRansacParams->motSeedsNew,
+                                      growSpeed, searchRadius, heightThd, \
+                                      str2SceneRansacParams->sceneMotNew,
+                                      str2SceneRansacParams->motIdxNew);
+
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNew, *str2SceneRansacParams->sceneNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->corrNew, *str2SceneRansacParams->corrNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsNew, *str2SceneRansacParams->motSeedsNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneMotNew, *str2SceneRansacParams->sceneMotNew,
+                                 str2SceneRansacParams->normalizationMat);
+
+        // register 2 scenes
+        registrationObj.register2ScenesRansac(str2SceneRansacParams->sceneMotRef,
+                                              str2SceneRansacParams->sceneMotNew,
+                                              str2SceneRansacParams->corrRef,
+                                              str2SceneRansacParams->corrNew,
+                                              str2SceneRansacParams->inlrThdRansac,
+                                              str2SceneRansacParams->sampleNbRansac,
+                                              str2SceneRansacParams->inlrRateRansac,
+                                              str2SceneRansacParams->maxIterRansac,
+                                              str2SceneRansacParams->transMat,
+                                              str2SceneRansacParams->registeredScene);
+
+        // remove preprocessing data visualization
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->registeredName.c_str());
+
+        displayPointClouds(str2SceneRansacParams->registeredScene,
+                           str2SceneRansacParams->registeredName.c_str(), false);
+
+        // update reference point cloud
+        str2SceneRansacParams->sceneRefName    = str2SceneRansacParams->sceneNewName;
+        str2SceneRansacParams->corrRefName     = str2SceneRansacParams->corrNewName;
+        str2SceneRansacParams->motSeedsRefName = str2SceneRansacParams->motSeedsNewName;
+        str2SceneRansacParams->sceneMotRef     = str2SceneRansacParams->sceneMotNew;
+
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNew, *str2SceneRansacParams->sceneNew,
+                                 str2SceneRansacParams->transMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->corrNew, *str2SceneRansacParams->corrNew,
+                                 str2SceneRansacParams->transMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsNew, *str2SceneRansacParams->motSeedsNew,
+                                 str2SceneRansacParams->transMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
+                                 str2SceneRansacParams->transMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneMotNew, *str2SceneRansacParams->sceneMotNew,
+                                 str2SceneRansacParams->transMat);
+
+        pcl::copyPointCloud(*str2SceneRansacParams->sceneNew,
+                            *str2SceneRansacParams->sceneRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->corrNew,
+                            *str2SceneRansacParams->corrRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->motSeedsNew,
+                            *str2SceneRansacParams->motSeedsRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->sceneMotNew,
+                            *str2SceneRansacParams->sceneMotRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->sceneNoMotNew,
+                            *str2SceneRansacParams->sceneNoMotRef);
+
+        std::cout<<"transMat: "<<str2SceneRansacParams->transMat<<"\n";
+        //        voxelDensityFiltering(str2SceneRansacParams->registeredScene);
+    }
+    on_saveRegist_clicked();
+}
+
+void KittiVisualizerQt::on_seqRegistAll_clicked()
+{
+    str2SceneRansacParams->sceneRefName = "load Reference Frame ...\n";
+    str2SceneRansacParams->registeredScene->points.clear();
+    // load reference scene for registration
+    str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+    str2SceneRansacParams->registLength = QInputDialog::getInt(0, "PointCloud Registration",
+                                                               "length of sequence:", 1);
+    std::cout<<"length of registration sequence: "<<str2SceneRansacParams->registLength<<"\n";
+    int fileNamelen = str2SceneRansacParams->sceneRefName.length();
+    std::string basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-4);
+    str2SceneRansacParams->corrRefName = basedDir + "_all.pcd";
+    str2SceneRansacParams->motSeedsRefName = basedDir + "_mot.pcd";
+
+    str2SceneRansacParams->corrRef  = loadPointClouds(str2SceneRansacParams->corrRefName);
+    str2SceneRansacParams->motSeedsRef = loadPointClouds(str2SceneRansacParams->motSeedsRefName);
+    pcl::copyPointCloud(*(str2SceneRansacParams->sceneRef),
+                        *(str2SceneRansacParams->sceneNoMotRef));
+
+    // motion segmention
+    PointCloudProcessing registrationObj;
+
+    pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+    pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+    pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+
+    registrationObj.normalizePointClouds(str2SceneRansacParams->corrRef,
+                                         str2SceneRansacParams->normalizationMat);
+    //    std::cout<<"normalization transmat: "<<str2SceneRansacParams->normalizationMat<<"\n";
+    pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotRef, *str2SceneRansacParams->sceneNoMotRef,
+                             str2SceneRansacParams->normalizationMat);
+
+    //    while(loopCondition)
+    for(int i=0; i<str2SceneRansacParams->registLength; i++)
+    {
+        std::string refIdx= str2SceneRansacParams->sceneRefName.substr(fileNamelen-6, fileNamelen-5);
+        basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-6);
+        int rIdx = std::atoi(refIdx.c_str()); ++rIdx;
+        char buffer[256]; sprintf(buffer, "%02d", rIdx);
+        std::string newIdx(buffer);
+        str2SceneRansacParams->sceneNewName    = basedDir + newIdx + ".pcd";
+        str2SceneRansacParams->corrNewName     = basedDir + newIdx + "_all.pcd";
+        str2SceneRansacParams->motSeedsNewName = basedDir + newIdx + "_mot.pcd";
+        str2SceneRansacParams->sceneNew = loadPointClouds(str2SceneRansacParams->sceneNewName);
+        std::cout<<"sceneNew size: "<<str2SceneRansacParams->sceneNew->points.size()<<"\n";
+
+        str2SceneRansacParams->corrNew = loadPointClouds(str2SceneRansacParams->corrNewName);
+        str2SceneRansacParams->motSeedsNew = loadPointClouds(str2SceneRansacParams->motSeedsNewName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneNew),
+                            *(str2SceneRansacParams->sceneNoMotNew));
+
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNew, *str2SceneRansacParams->sceneNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->corrNew, *str2SceneRansacParams->corrNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsNew, *str2SceneRansacParams->motSeedsNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
+                                 str2SceneRansacParams->normalizationMat);
+
+        // register 2 scenes
+        registrationObj.register2ScenesRansac(str2SceneRansacParams->sceneNoMotRef,
+                                              str2SceneRansacParams->sceneNoMotNew,
+                                              str2SceneRansacParams->corrRef,
+                                              str2SceneRansacParams->corrNew,
+                                              str2SceneRansacParams->inlrThdRansac,
+                                              str2SceneRansacParams->sampleNbRansac,
+                                              str2SceneRansacParams->inlrRateRansac,
+                                              str2SceneRansacParams->maxIterRansac,
+                                              str2SceneRansacParams->transMat,
+                                              str2SceneRansacParams->registeredScene);
+
+        // remove preprocessing data visualization
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->registeredName.c_str());
+
+        displayPointClouds(str2SceneRansacParams->registeredScene,
+                           str2SceneRansacParams->registeredName.c_str(), false);
+
+        // update reference point cloud
+        str2SceneRansacParams->sceneRefName    = str2SceneRansacParams->sceneNewName;
+        str2SceneRansacParams->corrRefName     = str2SceneRansacParams->corrNewName;
+        str2SceneRansacParams->motSeedsRefName = str2SceneRansacParams->motSeedsNewName;
+
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNew, *str2SceneRansacParams->sceneNew,
+                                 str2SceneRansacParams->transMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->corrNew, *str2SceneRansacParams->corrNew,
+                                 str2SceneRansacParams->transMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsNew, *str2SceneRansacParams->motSeedsNew,
+                                 str2SceneRansacParams->transMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
+                                 str2SceneRansacParams->transMat);
+
+        pcl::copyPointCloud(*str2SceneRansacParams->sceneNew,
+                            *str2SceneRansacParams->sceneRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->corrNew,
+                            *str2SceneRansacParams->corrRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->motSeedsNew,
+                            *str2SceneRansacParams->motSeedsRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->sceneMotNew,
+                            *str2SceneRansacParams->sceneMotRef);
+        pcl::copyPointCloud(*str2SceneRansacParams->sceneNoMotNew,
+                            *str2SceneRansacParams->sceneNoMotRef);
+
+        std::cout<<"transMat: "<<str2SceneRansacParams->transMat<<"\n";
+        //        voxelDensityFiltering(str2SceneRansacParams->registeredScene);
+    }
+    on_saveRegist_clicked();
+}
+
+void KittiVisualizerQt::on_ransac2framesRegist_clicked()
+{
+    str2SceneRansacParams->sceneRefName = "load Reference Frame ...\n";
+    str2SceneRansacParams->registeredScene->points.clear();
+    // load reference scene for registration
+    str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+    str2SceneRansacParams->registLength = QInputDialog::getInt(0, "PointCloud Registration",
+                                                               "length of sequence:", 1);
+    std::cout<<"length of registration sequence: "<<str2SceneRansacParams->registLength<<"\n";
+
+    for(int i=0; i<str2SceneRansacParams->registLength; i++)
+    {
+        str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+        std::cout<<"refName: "<<str2SceneRansacParams->sceneRefName<<"\n";
+        int fileNamelen = str2SceneRansacParams->sceneRefName.length();
+        std::string basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-4);
+        str2SceneRansacParams->corrRefName = basedDir + "_corrPrev.pcd";
+        str2SceneRansacParams->motSeedsRefName = basedDir + "_corrPrev.pcd";
+        str2SceneRansacParams->corrNewName     = basedDir + "_corrCurr.pcd";
+        str2SceneRansacParams->motSeedsNewName = basedDir + "_corrCurr.pcd";
+
+        std::string refIdx= str2SceneRansacParams->sceneRefName.substr(fileNamelen-6, fileNamelen-5);
+        basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-6);
+        int rIdx = std::atoi(refIdx.c_str()); ++rIdx;
+        char buffer[256]; sprintf(buffer, "%02d", rIdx);
+        std::string newIdx(buffer);
+        str2SceneRansacParams->sceneNewName    = basedDir + newIdx + ".pcd";
+
+        str2SceneRansacParams->sceneNew = loadPointClouds(str2SceneRansacParams->sceneNewName);
+        std::cout<<"sceneNew size: "<<str2SceneRansacParams->sceneNew->points.size()<<"\n";
+
+        str2SceneRansacParams->corrRef  = loadPointClouds(str2SceneRansacParams->corrRefName);
+        str2SceneRansacParams->motSeedsRef = loadPointClouds(str2SceneRansacParams->motSeedsRefName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneRef),
+                            *(str2SceneRansacParams->sceneNoMotRef));
+
+        // motion segmention
+        PointCloudProcessing registrationObj;
+
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+
+        registrationObj.normalizePointClouds(str2SceneRansacParams->corrRef,
+                                             str2SceneRansacParams->normalizationMat);
+        //    std::cout<<"normalization transmat: "<<str2SceneRansacParams->normalizationMat<<"\n";
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotRef, *str2SceneRansacParams->sceneNoMotRef,
+                                 str2SceneRansacParams->normalizationMat);
+
+        str2SceneRansacParams->corrNew = loadPointClouds(str2SceneRansacParams->corrNewName);
+        str2SceneRansacParams->motSeedsNew = loadPointClouds(str2SceneRansacParams->motSeedsNewName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneNew),
+                            *(str2SceneRansacParams->sceneNoMotNew));
+
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+
+        //        pcl::transformPointCloud(*str2SceneRansacParams->sceneNew, *str2SceneRansacParams->sceneNew,
+        //                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->corrNew, *str2SceneRansacParams->corrNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsNew, *str2SceneRansacParams->motSeedsNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
+                                 str2SceneRansacParams->normalizationMat);
+
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene,
+                                 str2SceneRansacParams->normalizationMat);
+        //        if(i==1)
+        //        {
+        //            displayPointClouds(str2SceneRansacParams->registeredScene,
+        //                           "str2SceneRansacParams->registeredName.c_str()", false);
+        //            displayPointClouds(str2SceneRansacParams->sceneNoMotRef, "refScene", true);
+        //        }
+
+        // register 2 scenes
+        registrationObj.register2ScenesRansac(str2SceneRansacParams->sceneNoMotRef,
+                                              str2SceneRansacParams->sceneNoMotNew,
+                                              str2SceneRansacParams->corrRef,
+                                              str2SceneRansacParams->corrNew,
+                                              str2SceneRansacParams->inlrThdRansac,
+                                              str2SceneRansacParams->sampleNbRansac,
+                                              str2SceneRansacParams->inlrRateRansac,
+                                              str2SceneRansacParams->maxIterRansac,
+                                              str2SceneRansacParams->transMat,
+                                              str2SceneRansacParams->registeredScene);
+
+        // remove preprocessing data visualization
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->registeredName.c_str());
+
+        // update reference point cloud
+        str2SceneRansacParams->sceneRefName    = str2SceneRansacParams->sceneNewName;
+        str2SceneRansacParams->corrRefName     = " ";
+        str2SceneRansacParams->motSeedsRefName = " ";
+
+        Eigen::Matrix4f transTmp; transTmp.setOnes();
+        //        transTmp = str2SceneRansacParams->normalizationMat.inverse();
+        //        pcl::transformPointCloud(*str2SceneRansacParams->sceneNew, *str2SceneRansacParams->sceneNew,
+        //                                 str2SceneRansacParams->transMat);
+
+        transTmp = str2SceneRansacParams->transMat.inverse();
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene, transTmp);
+
+        transTmp = str2SceneRansacParams->normalizationMat.inverse();
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene, transTmp);
+
+        //        pcl::copyPointCloud(*str2SceneRansacParams->sceneNew,
+        //                            *str2SceneRansacParams->sceneRef);
+
+        displayPointClouds(str2SceneRansacParams->registeredScene,
+                           str2SceneRansacParams->registeredName.c_str(), false);
+
+
+        std::cout<<"transMat: "<<str2SceneRansacParams->transMat<<"\n";
+        //        voxelDensityFiltering(str2SceneRansacParams->registeredScene);
+    }
+    on_saveRegist_clicked();
+}
+
+void KittiVisualizerQt::on_mapTexture_clicked()
+{
+    PointCloudC::Ptr cloudRGB(new PointCloudC);
+    std::string fileName = "select any cloud";
+    cloudRGB = loadPointClouds(fileName);
+    fileName = fileName.substr(0, fileName.length()-4) + "_textured.pcd";
+    pcl::io::savePCDFileASCII(fileName.c_str(), *cloudRGB);
+}
+
+//void KittiVisualizerQt::removeMotCorrespondences()
+//{
+
+//}
+
+void KittiVisualizerQt::on_ransacMS_clicked()
+{
+    str2SceneRansacParams->sceneRefName = "load Reference Frame ...\n";
+    str2SceneRansacParams->registeredScene->points.clear();
+    // load reference scene for registration
+    str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+    if(str2SceneRansacParams->sceneRef->points.size()<1) {return;}
+    str2SceneRansacParams->registLength = QInputDialog::getInt(0, "PointCloud Registration",
+                                                               "length of sequence:", 1);
+    std::cout<<"length of registration sequence: "<<str2SceneRansacParams->registLength<<"\n";
+
+    for(int i=0; i<str2SceneRansacParams->registLength; i++)
+    {
+        str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+        std::cout<<"refName: "<<str2SceneRansacParams->sceneRefName<<"\n";
+        int fileNamelen = str2SceneRansacParams->sceneRefName.length();
+        std::string basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-4);
+        str2SceneRansacParams->corrRefName = basedDir + "_corrPrev.pcd";
+        str2SceneRansacParams->motSeedsRefName = basedDir + "_mot.pcd";
+        str2SceneRansacParams->corrNewName     = basedDir + "_corrCurr.pcd";
+
+
+        std::string refIdx= str2SceneRansacParams->sceneRefName.substr(fileNamelen-7, fileNamelen-5);
+        basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-7);
+        int rIdx = std::atoi(refIdx.c_str()); ++rIdx;
+        char buffer[256]; sprintf(buffer, "%03d", rIdx);
+        std::string newIdx(buffer);
+        str2SceneRansacParams->sceneNewName    = basedDir + newIdx + ".pcd";
+        str2SceneRansacParams->motSeedsNewName = basedDir + newIdx +"_mot.pcd";
+
+        str2SceneRansacParams->sceneNew = loadPointClouds(str2SceneRansacParams->sceneNewName);
+        std::cout<<"sceneNew size: "<<str2SceneRansacParams->sceneNew->points.size()<<"\n";
+
+        str2SceneRansacParams->corrRef  = loadPointClouds(str2SceneRansacParams->corrRefName);
+        str2SceneRansacParams->motSeedsRef = loadPointClouds(str2SceneRansacParams->motSeedsRefName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneRef),
+                            *(str2SceneRansacParams->sceneNoMotRef));
+
+        str2SceneRansacParams->corrNew = loadPointClouds(str2SceneRansacParams->corrNewName);
+        str2SceneRansacParams->motSeedsNew = loadPointClouds(str2SceneRansacParams->motSeedsNewName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneNew),
+                            *(str2SceneRansacParams->sceneNoMotNew));
+
+        // motion segmention
+        PointCloudProcessing registrationObj;
+
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+        //        PointCloudC::Ptr corrRefTmp(new PointCloudC);
+        //        pcl::copyPointCloud(*str2SceneRansacParams->corrRef, *corrRefTmp);
+        //        PointCloudC::Ptr corrNewTmp(new PointCloudC);
+        //        pcl::copyPointCloud(*str2SceneRansacParams->corrNew, *corrNewTmp);
+        {
+            PointCloudC::Ptr sceneMotTmp(new PointCloudC);
+            PointCloudC::Ptr sceneMotTmp2(new PointCloudC);
+            std::set<int> idxTmp, idxTmp2; idxTmp.clear(); idxTmp2.clear();
+//            std::cout<<"before mot seed removal, ref size: "<<str2SceneRansacParams->corrRef->points.size()<<", "
+//                    <<"new size: "<<str2SceneRansacParams->corrNew->points.size()<<"\n";
+            registrationObj.pclRegionGrow(str2SceneRansacParams->corrRef,
+                                          str2SceneRansacParams->motSeedsRef,
+                                          growSpeed, searchRadius, heightThd, \
+                                          sceneMotTmp, idxTmp);
+            registrationObj.pclRegionGrow(str2SceneRansacParams->corrNew,
+                                          str2SceneRansacParams->motSeedsNew,
+                                          growSpeed, searchRadius, heightThd, \
+                                          sceneMotTmp2, idxTmp2);
+            if(idxTmp.size()>idxTmp2.size())
+            {
+                removeMotions(str2SceneRansacParams->corrRef, idxTmp);
+                removeMotions(str2SceneRansacParams->corrNew, idxTmp);
+            }else
+            {
+                removeMotions(str2SceneRansacParams->corrRef, idxTmp2);
+                removeMotions(str2SceneRansacParams->corrNew, idxTmp2);
+            }
+//            std::cout<<"after mot seed removal, ref size: "<<str2SceneRansacParams->corrRef->points.size()<<", "
+//                    <<"new size: "<<str2SceneRansacParams->corrNew->points.size()<<"\n";
+//            displayPointClouds(str2SceneRansacParams->corrRef, "corref",true);
+//            displayPointClouds(str2SceneRansacParams->motSeedsRef,"seedref",5);
+//            return;
+        }
+        {
+            str2SceneRansacParams->motIdxRef.clear();str2SceneRansacParams->motIdxNew.clear();
+            //            registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsRef,searchRadius);
+            registrationObj.pclRegionGrow(str2SceneRansacParams->sceneNoMotRef,
+                                          str2SceneRansacParams->motSeedsRef,
+                                          growSpeed, searchRadius, heightThd, \
+                                          str2SceneRansacParams->sceneMotRef,
+                                          str2SceneRansacParams->motIdxRef);
+            removeMotions(str2SceneRansacParams->sceneNoMotRef, str2SceneRansacParams->motIdxRef);
+            registrationObj.pclRegionGrow(str2SceneRansacParams->sceneNoMotNew,
+                                          str2SceneRansacParams->motSeedsNew,
+                                          growSpeed, searchRadius, heightThd, \
+                                          str2SceneRansacParams->sceneMotNew,
+                                          str2SceneRansacParams->motIdxNew);
+            removeMotions(str2SceneRansacParams->sceneNoMotNew, str2SceneRansacParams->motIdxNew);
+        }
+
+
+        registrationObj.normalizePointClouds(str2SceneRansacParams->corrRef,
+                                             str2SceneRansacParams->normalizationMat);
+        //    std::cout<<"normalization transmat: "<<str2SceneRansacParams->normalizationMat<<"\n";
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotRef, *str2SceneRansacParams->sceneNoMotRef,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsRef, *str2SceneRansacParams->motSeedsRef,
+                                 str2SceneRansacParams->normalizationMat);
+
+        pcl::transformPointCloud(*str2SceneRansacParams->corrNew, *str2SceneRansacParams->corrNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsNew, *str2SceneRansacParams->motSeedsNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
+                                 str2SceneRansacParams->normalizationMat);
+
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene,
+                                 str2SceneRansacParams->normalizationMat);
+
+        // register 2 scenes
+        registrationObj.register2ScenesRansac(str2SceneRansacParams->sceneNoMotRef,
+                                              str2SceneRansacParams->sceneNoMotNew,
+                                              str2SceneRansacParams->corrRef,
+                                              str2SceneRansacParams->corrNew,
+                                              str2SceneRansacParams->inlrThdRansac,
+                                              str2SceneRansacParams->sampleNbRansac,
+                                              str2SceneRansacParams->inlrRateRansac,
+                                              str2SceneRansacParams->maxIterRansac,
+                                              str2SceneRansacParams->transMat,
+                                              str2SceneRansacParams->registeredScene);
+
+        // remove preprocessing data visualization
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->registeredName.c_str());
+
+        // update reference point cloud
+        str2SceneRansacParams->sceneRefName    = str2SceneRansacParams->sceneNewName;
+        str2SceneRansacParams->corrRefName     = " ";
+        str2SceneRansacParams->motSeedsRefName = " ";
+
+        Eigen::Matrix4f transTmp; transTmp.setOnes();
+
+
+        transTmp = str2SceneRansacParams->transMat.inverse();
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene, transTmp);
+
+        transTmp = str2SceneRansacParams->normalizationMat.inverse();
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene, transTmp);
+
+        displayPointClouds(str2SceneRansacParams->registeredScene,
+                           str2SceneRansacParams->registeredName.c_str(), false);
+
+
+        std::cout<<"transMat: "<<str2SceneRansacParams->transMat<<"\n";
+        //        voxelDensityFiltering(str2SceneRansacParams->registeredScene);
+//        if(i%5 ==0)
+//        {
+////            voxelDensityFiltering(str2SceneRansacParams->registeredScene);
+//        }
+    }
+    on_saveRegist_clicked();
+}
+
+void KittiVisualizerQt::on_ransac2framesRmBkg_clicked()
+{
+    str2SceneRansacParams->sceneRefName = "load Reference Frame ...\n";
+    str2SceneRansacParams->registeredScene->points.clear();
+    // load reference scene for registration
+    str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+    if(str2SceneRansacParams->sceneRef->points.size()<1) {return;}
+    str2SceneRansacParams->registLength = QInputDialog::getInt(0, "PointCloud Registration",
+                                                               "length of sequence:", 1);
+    std::cout<<"length of registration sequence: "<<str2SceneRansacParams->registLength<<"\n";
+    PointCloudC::Ptr Mots(new PointCloudC);
+    for(int i=0; i<str2SceneRansacParams->registLength; i++)
+    {
+        str2SceneRansacParams->sceneRef = loadPointClouds(str2SceneRansacParams->sceneRefName);
+        std::cout<<"refName: "<<str2SceneRansacParams->sceneRefName<<"\n";
+        int fileNamelen = str2SceneRansacParams->sceneRefName.length();
+        std::string basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-4);
+        str2SceneRansacParams->corrRefName = basedDir + "_corrPrev.pcd";
+        str2SceneRansacParams->motSeedsRefName = basedDir + "_mot.pcd";
+        str2SceneRansacParams->corrNewName     = basedDir + "_corrCurr.pcd";
+
+
+        std::string refIdx= str2SceneRansacParams->sceneRefName.substr(fileNamelen-7, fileNamelen-5);
+        basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-7);
+        int rIdx = std::atoi(refIdx.c_str()); ++rIdx;
+        char buffer[256]; sprintf(buffer, "%03d", rIdx);
+        std::string newIdx(buffer);
+        str2SceneRansacParams->sceneNewName    = basedDir + newIdx + ".pcd";
+        str2SceneRansacParams->motSeedsNewName = basedDir + newIdx +"_mot.pcd";
+
+        str2SceneRansacParams->sceneNew = loadPointClouds(str2SceneRansacParams->sceneNewName);
+        std::cout<<"sceneNew size: "<<str2SceneRansacParams->sceneNew->points.size()<<"\n";
+
+        str2SceneRansacParams->corrRef  = loadPointClouds(str2SceneRansacParams->corrRefName);
+        str2SceneRansacParams->motSeedsRef = loadPointClouds(str2SceneRansacParams->motSeedsRefName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneRef),
+                            *(str2SceneRansacParams->sceneNoMotRef));
+
+        str2SceneRansacParams->corrNew = loadPointClouds(str2SceneRansacParams->corrNewName);
+        str2SceneRansacParams->motSeedsNew = loadPointClouds(str2SceneRansacParams->motSeedsNewName);
+        pcl::copyPointCloud(*(str2SceneRansacParams->sceneNew),
+                            *(str2SceneRansacParams->sceneNoMotNew));
+
+
+        // motion segmention
+        PointCloudProcessing registrationObj;
+
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+        //        PointCloudC::Ptr corrRefTmp(new PointCloudC);
+        //        pcl::copyPointCloud(*str2SceneRansacParams->corrRef, *corrRefTmp);
+        //        PointCloudC::Ptr corrNewTmp(new PointCloudC);
+        //        pcl::copyPointCloud(*str2SceneRansacParams->corrNew, *corrNewTmp);
+        {
+            PointCloudC::Ptr sceneMotTmp(new PointCloudC);
+            PointCloudC::Ptr sceneMotTmp2(new PointCloudC);
+            std::set<int> idxTmp, idxTmp2; idxTmp.clear(); idxTmp2.clear();
+//            std::cout<<"before mot seed removal, ref size: "<<str2SceneRansacParams->corrRef->points.size()<<", "
+//                    <<"new size: "<<str2SceneRansacParams->corrNew->points.size()<<"\n";
+            registrationObj.pclRegionGrow(str2SceneRansacParams->corrRef,
+                                          str2SceneRansacParams->motSeedsRef,
+                                          growSpeed, searchRadius, heightThd, \
+                                          sceneMotTmp, idxTmp);
+            registrationObj.pclRegionGrow(str2SceneRansacParams->corrNew,
+                                          str2SceneRansacParams->motSeedsNew,
+                                          growSpeed, searchRadius, heightThd, \
+                                          sceneMotTmp2, idxTmp2);
+            if(idxTmp.size()>idxTmp2.size())
+            {
+                removeMotions(str2SceneRansacParams->corrRef, idxTmp);
+                removeMotions(str2SceneRansacParams->corrNew, idxTmp);
+            }else
+            {
+                removeMotions(str2SceneRansacParams->corrRef, idxTmp2);
+                removeMotions(str2SceneRansacParams->corrNew, idxTmp2);
+            }
+//            std::cout<<"after mot seed removal, ref size: "<<str2SceneRansacParams->corrRef->points.size()<<", "
+//                    <<"new size: "<<str2SceneRansacParams->corrNew->points.size()<<"\n";
+//            displayPointClouds(str2SceneRansacParams->corrRef, "corref",true);
+//            displayPointClouds(str2SceneRansacParams->motSeedsRef,"seedref",5);
+//            return;
+        }
+        {
+            str2SceneRansacParams->motIdxRef.clear();str2SceneRansacParams->motIdxNew.clear();
+            registrationObj.removeBadSeed(str2SceneRansacParams->motSeedsRef,searchRadius);
+            registrationObj.pclRegionGrow(str2SceneRansacParams->sceneNoMotRef,
+                                          str2SceneRansacParams->motSeedsRef,
+                                          growSpeed, searchRadius, heightThd, \
+                                          str2SceneRansacParams->sceneMotRef,
+                                          str2SceneRansacParams->motIdxRef);
+            removeMotions(str2SceneRansacParams->sceneNoMotRef, str2SceneRansacParams->motIdxRef);
+            registrationObj.pclRegionGrow(str2SceneRansacParams->sceneNoMotNew,
+                                          str2SceneRansacParams->motSeedsNew,
+                                          growSpeed, searchRadius, heightThd, \
+                                          str2SceneRansacParams->sceneMotNew,
+                                          str2SceneRansacParams->motIdxNew);
+            removeMotions(str2SceneRansacParams->sceneNoMotNew, str2SceneRansacParams->motIdxNew);
+
+        }
+
+
+        registrationObj.normalizePointClouds(str2SceneRansacParams->corrRef,
+                                             str2SceneRansacParams->normalizationMat);
+        //    std::cout<<"normalization transmat: "<<str2SceneRansacParams->normalizationMat<<"\n";
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotRef, *str2SceneRansacParams->sceneNoMotRef,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsRef, *str2SceneRansacParams->motSeedsRef,
+                                 str2SceneRansacParams->normalizationMat);
+
+        pcl::transformPointCloud(*str2SceneRansacParams->corrNew, *str2SceneRansacParams->corrNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->motSeedsNew, *str2SceneRansacParams->motSeedsNew,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneNoMotNew, *str2SceneRansacParams->sceneNoMotNew,
+                                 str2SceneRansacParams->normalizationMat);
+
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneMotRef,
+                                 *str2SceneRansacParams->sceneMotRef,
+                                 str2SceneRansacParams->normalizationMat);
+        pcl::transformPointCloud(*str2SceneRansacParams->sceneMotNew,
+                                 *str2SceneRansacParams->sceneMotNew,
+                                 str2SceneRansacParams->normalizationMat);
+
+        pcl::transformPointCloud(*Mots, *Mots, str2SceneRansacParams->normalizationMat);
+        // Motions
+        for(int i=0; i<str2SceneRansacParams->sceneMotRef->points.size();i++)
+        {
+            Mots->points.push_back(str2SceneRansacParams->sceneMotRef->points.at(i));
+        }
+        for(int i=0; i<str2SceneRansacParams->sceneMotNew->points.size();i++)
+        {
+            Mots->points.push_back(str2SceneRansacParams->sceneMotNew->points.at(i));
+        }
+
+        // register 2 scenes
+        registrationObj.register2ScenesRansac(str2SceneRansacParams->sceneNoMotRef,
+                                              str2SceneRansacParams->sceneNoMotNew,
+                                              str2SceneRansacParams->corrRef,
+                                              str2SceneRansacParams->corrNew,
+                                              str2SceneRansacParams->inlrThdRansac,
+                                              str2SceneRansacParams->sampleNbRansac,
+                                              str2SceneRansacParams->inlrRateRansac,
+                                              str2SceneRansacParams->maxIterRansac,
+                                              str2SceneRansacParams->transMat,
+                                              str2SceneRansacParams->registeredScene);
+
+
+        // remove preprocessing data visualization
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->sceneNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->corrNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsNewName.c_str());
+        pclVisualizer->removePointCloud(str2SceneRansacParams->registeredName.c_str());
+
+        // update reference point cloud
+        str2SceneRansacParams->sceneRefName    = str2SceneRansacParams->sceneNewName;
+        str2SceneRansacParams->corrRefName     = " ";
+        str2SceneRansacParams->motSeedsRefName = " ";
+
+        Eigen::Matrix4f transTmp; transTmp.setOnes();
+
+
+        transTmp = str2SceneRansacParams->transMat.inverse();
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene, transTmp);
+
+        transTmp = str2SceneRansacParams->normalizationMat.inverse();
+        pcl::transformPointCloud(*str2SceneRansacParams->registeredScene,
+                                 *str2SceneRansacParams->registeredScene, transTmp);
+
+        transTmp = str2SceneRansacParams->normalizationMat.inverse();
+        pcl::transformPointCloud(*Mots, *Mots, transTmp);
+        displayPointClouds(Mots,"Mots", false);
+        std::cout<<"transMat: "<<str2SceneRansacParams->transMat<<"\n";
+    }
+    pcl::io::savePCDFileASCII("MotsTraj.pcd",
+                              *Mots);
 }

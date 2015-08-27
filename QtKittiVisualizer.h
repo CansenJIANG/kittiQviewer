@@ -65,6 +65,7 @@ struct str_2ScenesRansac
     // moving object indices
     std::set<int> motIdxRef;
     std::set<int> motIdxNew;
+    bool rmMotState;
 
     // Ransac settings
     float inlrRateRansac;
@@ -92,6 +93,7 @@ public:
     bool loadNextFrame();
     bool loadPreviousFrame();
 
+    void init();
     void getTrackletColor(const KittiTracklet& tracklet, int &r, int& g, int& b);
     PointCloudC::Ptr loadPointClouds(std::string &filesName);
     void removeMotions(PointCloudC::Ptr &scene, std::set<int> clusterIdx);
@@ -143,7 +145,7 @@ private slots:
 
     void on_removeMot_clicked();
 
-    void on_frontView_clicked();
+    void on_loadColorCloud_clicked();
 
     void on_FoV3d2d_clicked();
 
@@ -178,6 +180,26 @@ private slots:
     void on_rmBadSeeds_clicked();
 
     void on_regist2RndScenes_clicked();
+
+    void on_crossMergeSubSeq_clicked();
+
+    void on_removeMotState_stateChanged(int arg1);
+
+    void on_algoReset_clicked();
+
+    void on_showAxis_stateChanged(int arg1);
+
+    void on_seqRegistMots_clicked();
+
+    void on_seqRegistAll_clicked();
+
+    void on_ransac2framesRegist_clicked();
+
+    void on_mapTexture_clicked();
+
+    void on_ransacMS_clicked();
+
+    void on_ransac2framesRmBkg_clicked();
 
 private:
 
