@@ -20,7 +20,8 @@ SOURCES += main.cpp\
     QtKittiVisualizer.cpp \
     KittiDataset.cpp \
     KittiConfig.cpp \
-    pointcloudprocessing.cpp
+    pointcloudprocessing.cpp \
+    mexFile.cpp
 
 FORMS    += kittiQviewer.ui
 

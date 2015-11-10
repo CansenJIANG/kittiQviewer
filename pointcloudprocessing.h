@@ -34,8 +34,8 @@ public:
     void removeBadSeed(PointCloudC::Ptr &cloud,
                         const f32 searchRadius);
 
-    void pclRegionGrow(PointCloudC::Ptr scene,
-                       PointCloudC::Ptr seeds,
+    void pclRegionGrow(const PointCloudC::Ptr scene,
+                       const PointCloudC::Ptr seeds,
                        float growSpeed,
                        float searchRadius,
                        float heightThd,

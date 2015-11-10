@@ -136,6 +136,7 @@ private slots:
     void on_addTrkPts_clicked();
 
     void on_segMovObj_clicked();
+    void on_segNmots_clicked();
 
     void on_regionGrowR_editingFinished();
 
@@ -200,6 +201,14 @@ private slots:
     void on_ransacMS_clicked();
 
     void on_ransac2framesRmBkg_clicked();
+
+    void on_rmNMots_clicked();
+
+    void on_addClouds_clicked();
+
+    void on_addFwdPts_clicked();
+
+    void on_addBwdPts_clicked();
 
 private:
 
