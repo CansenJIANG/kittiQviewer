@@ -147,6 +147,8 @@ void PointCloudProcessing::pclRegionGrow(const PointCloudC::Ptr scene,
         }
     }
   std::cout<<"cloudSeg size: "<<cloudSeg->points.size()<<std::endl;
+  cloudSeg->width = 1;
+  cloudSeg->height = cloudSeg->points.size();
 }
 /*
 void PointCloudProcessing::multiSeedsRegionGrow(PointCloudC::Ptr scene,

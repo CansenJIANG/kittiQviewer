@@ -46,7 +46,7 @@
         </size>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
@@ -1214,7 +1214,7 @@
             <property name="geometry">
              <rect>
               <x>0</x>
-              <y>320</y>
+              <y>270</y>
               <width>141</width>
               <height>27</height>
              </rect>
@@ -1227,7 +1227,7 @@
             <property name="geometry">
              <rect>
               <x>140</x>
-              <y>320</y>
+              <y>270</y>
               <width>141</width>
               <height>27</height>
              </rect>
@@ -1400,6 +1400,88 @@
          <property name="text">
           <string>add Clouds</string>
          </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="cvpr">
+        <attribute name="title">
+         <string>cvpr</string>
+        </attribute>
+        <widget class="QSplitter" name="splitter_28">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>50</y>
+           <width>253</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <widget class="QPushButton" name="runMots">
+          <property name="text">
+           <string>Run Mots</string>
+          </property>
+         </widget>
+         <widget class="QLineEdit" name="runMotFps">
+          <property name="text">
+           <string>10</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>fps</string>
+          </property>
+         </widget>
+        </widget>
+        <widget class="QSplitter" name="splitter_29">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>20</y>
+           <width>291</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <widget class="QPushButton" name="seqRegistNmotsRunning">
+          <property name="text">
+           <string>Seq. Regist. out N Mots</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="loadNmots">
+          <property name="text">
+           <string>Load Nmots</string>
+          </property>
+         </widget>
+        </widget>
+        <widget class="QSplitter" name="splitter_30">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>80</y>
+           <width>257</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <widget class="QPushButton" name="fuseMotsSeq">
+          <property name="text">
+           <string>Fuse Mots Seq.</string>
+          </property>
+         </widget>
+         <widget class="QPushButton" name="loadMotsFusion">
+          <property name="text">
+           <string>Load Mots Fusion</string>
+          </property>
+         </widget>
         </widget>
        </widget>
       </widget>
