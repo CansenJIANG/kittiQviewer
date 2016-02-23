@@ -84,6 +84,11 @@ struct str_2ScenesRansac
   Eigen::Matrix4f normalizationMat;
 };
 
+struct str_DennisParam
+{
+  PointCloudC::Ptr cloud;
+};
+
 class KittiVisualizerQt : public QMainWindow
 {
   Q_OBJECT
@@ -248,6 +253,12 @@ private slots:
 
   void on_displayMots_clicked();
 
+  //////////////////////////////////////////////////////////////////////////
+  /// SECTION FOR DENNIS
+  ///
+  //////////////////////////////////////////////////////////////////////////
+  void on_dennis_loadKitti3D_clicked(); // load the 3D data from KITTI dataset (.bin file)
+
 private:
 
   int parseCommandLineOptions(int argc, char** argv);
@@ -309,6 +320,12 @@ private:
                               void* viewer_void);
 
   Ui::KittiVisualizerQt *ui;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// SECTION FOR DENNIS
+  ///
+  //////////////////////////////////////////////////////////////////////////
+  str_DennisParam *strDennisParam; // create the structure for variables' control
 
 };
 

@@ -46,7 +46,7 @@
         </size>
        </property>
        <property name="currentIndex">
-        <number>3</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="tab">
         <attribute name="title">
@@ -1533,6 +1533,50 @@
          </property>
          <property name="text">
           <string>Display Mots</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="tab_3">
+        <attribute name="title">
+         <string>Dennis</string>
+        </attribute>
+        <widget class="QPushButton" name="dennis_loadKitti3D">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>20</y>
+           <width>131</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>load_Kitti_3D</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="dennis_deletePC">
+         <property name="geometry">
+          <rect>
+           <x>170</x>
+           <y>20</y>
+           <width>99</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>delete_PC</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="dennis_mapTexture">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>60</y>
+           <width>131</width>
+           <height>27</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>map_PC_Texture</string>
          </property>
         </widget>
        </widget>
