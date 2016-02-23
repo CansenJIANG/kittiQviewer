@@ -87,6 +87,14 @@ struct str_2ScenesRansac
 struct str_DennisParam
 {
   PointCloudC::Ptr cloud;
+  // structure used to pass arguments to the callback function
+  PointCloudT::Ptr clicked_points_3d;
+  // visualizer buffer
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewerPtr;
+  // text editor output
+  QPlainTextEdit *txtEditor;
+  // color of keypoints
+  int ptColor[3];
 };
 
 class KittiVisualizerQt : public QMainWindow
@@ -258,6 +266,10 @@ private slots:
   ///
   //////////////////////////////////////////////////////////////////////////
   void on_dennis_loadKitti3D_clicked(); // load the 3D data from KITTI dataset (.bin file)
+
+  void on_dennis_clickFeaturePoints_clicked(); // click points on the object as seeds for segmentation
+
+  void on_dennis_clickedObjSeg_clicked(); // segment the selected object using region growing technique
 
 private:
 

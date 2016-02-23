@@ -121,19 +121,25 @@ KittiVisualizerQt::KittiVisualizerQt(QWidget *parent, int argc, char** argv) :
   connect(ui->dennis_deletePC,      SIGNAL (clicked()), this,
           SLOT (on_deletePc_clicked()));
 
-  // the delete point cloud button has been created in Section RANSAC
+  // the map texture button has been created in Section RANSAC
   // so we just call the function again by connecting to the same slot.
   // To map the texture, you need to generate the point cloud and the
   // corresponding color information using the MATLAB function.
   connect(ui->dennis_mapTexture,      SIGNAL (clicked()), this,
           SLOT (on_mapTexture_clicked()));
 
+  // the load colored point cloud button has been created in Section MotSeg
+  // so we just call the function again by connecting to the same slot.
+  // The function basically load the textured point cloud
+  // which produced by the mapTexture function.
+  connect(ui->dennis_loadColorPC,      SIGNAL (clicked()), this,
+          SLOT (on_loadColorCloud_clicked()));
+
   // my initialization
   init();
 }
 void KittiVisualizerQt::init()
 {
-
   colorOpt[0] = 0;
   colorOpt[1] = 0;
   colorOpt[2] = 0;
@@ -206,6 +212,10 @@ void KittiVisualizerQt::init()
   //////////////////////////////////////////////////////////////////////////
   strDennisParam = new str_DennisParam;
   strDennisParam->cloud.reset(new PointCloudC);
+  strDennisParam->clicked_points_3d.reset(new PointCloudT);
+  strDennisParam->ptColor[0] = 0;
+  strDennisParam->ptColor[1] = 255;
+  strDennisParam->ptColor[2] = 0;
 }
 KittiVisualizerQt::~KittiVisualizerQt()
 {
@@ -1102,7 +1112,7 @@ void KittiVisualizerQt::on_addTrkPts_clicked()
 void KittiVisualizerQt::on_segMovObj_clicked()
 {
   PointCloudC::Ptr cloudSeg(new PointCloudC);
-  seeds->points.clear(); cloudSeg->points.clear(); clusterIdx.clear();
+  cloudSeg->points.clear(); clusterIdx.clear();
   if(scene->points.size()<1)
     {
       // load scene
@@ -1112,7 +1122,7 @@ void KittiVisualizerQt::on_segMovObj_clicked()
                                                       tr("Files (*.pcd)"));
       if(fileName.size()<1)
         {
-          std::cout<<"seed not loaded ...\n";
+          std::cout<<"scene not loaded ...\n";
           return;
         }
       pcl::io::loadPCDFile<PointC>(fileName.toStdString(), *scene);
@@ -1127,7 +1137,13 @@ void KittiVisualizerQt::on_segMovObj_clicked()
     {
       pcl::copyPointCloud(*colorTrk, *seeds);
     }
+  /// Use clicked points as seeds
+  else if (seeds->points.size()>1)
+  {
+    ui->outputMsg->appendPlainText("Use clicked points as seeds for segmentation...\n");
+  }
   else{
+      seeds->points.clear();
       // load seeds
       QString fileName = QFileDialog::getOpenFileName(this, tr("load motion segmentation seeds"),
                                                       "/home/jiang/CvTools/DeepFlow_release2.0",
@@ -1152,12 +1168,17 @@ void KittiVisualizerQt::on_segMovObj_clicked()
   pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                   5, "segMot");
 
+  /// Save the segmented point cloud
+  pcl::io::savePCDFileASCII("/home/jiang/Documents/Paper_Proposals/High_Quality_3dReconstruction/segMot.pcd",
+                            *cloudSeg);
+/* If activated, you need to give the second seeds
+ *
   PointCloudC::Ptr seed2(new PointCloudC);
   PointCloudC::Ptr cloudSeg2(new PointCloudC);
   if(seed2->points.size()<1)
     {
       // load scene
-      QString fileName = QFileDialog::getOpenFileName(this, tr("load scene"),
+      QString fileName = QFileDialog::getOpenFileName(this, tr("load seed2"),
                                                       "/home/jiang/CvTools/DeepFlow_release2.0",
                                                       tr("Files (*.pcd)"));
       if(fileName.size()<1)
@@ -1177,7 +1198,7 @@ void KittiVisualizerQt::on_segMovObj_clicked()
   pclVisualizer->addPointCloud<PointC>(cloudSeg2, cloudSegCH2, "segMot2");
   pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                   5, "segMot2");
-
+*/
   ui->qvtkWidget_pclViewer->update();
 }
 void KittiVisualizerQt::on_segNmots_clicked()
@@ -4870,4 +4891,124 @@ void KittiVisualizerQt::on_dennis_loadKitti3D_clicked()
   pclVisualizer->addPointCloud(strDennisParam->cloud, "dennis_loaded3d");
   ///    pclVisualizer->updatePointCloud<KittiPoint>(pointCloud, colorHandler,"newPc");
   ui->qvtkWidget_pclViewer->update();
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+/// define click point event to select feature points on the point cloud
+/////////////////////////////////////////////////////////////////////////////////////
+f32
+distanceL2(PointT p1, PointT p2)
+{
+  return std::sqrt( std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2) +
+                    std::pow(p1.z - p2.z, 2) );
+}
+
+void
+clickPoint_callback (const pcl::visualization::PointPickingEvent& event, void* args)
+{
+  struct str_DennisParam* data = (struct str_DennisParam *) args;
+
+  // if clicking event is null, return.
+  if (event.getPointIndex () == -1)
+    {
+      return;
+    }
+
+  // initialize point containers
+  PointT current_point, previous_point;
+  current_point.x  = .0; current_point.y  = .0; current_point.z  = .0;
+  previous_point.x = .0; previous_point.y = .0; previous_point.z = .0;
+
+  // waiting for clicking event
+  event.getPoint(current_point.x, current_point.y, current_point.z);
+
+  // pushback the selected features
+  unsigned int featureNb = data->clicked_points_3d->points.size();
+  if(featureNb)
+    {
+      previous_point = data->clicked_points_3d->points[featureNb-1];
+    }
+
+  // avoid multiple selections of same feature
+  f32 tree_distance = 100000.0;
+  int save_feature  = 1;
+  int i = featureNb, stop_loop = 50;
+  PointT *tree_feature = &data->clicked_points_3d->points[featureNb];
+  // variable stop_loop to avoid infinite searching of duplicate points
+  while(i-- && stop_loop--)
+    {
+      --tree_feature;
+      // avoid duplicate points
+      tree_distance = distanceL2(*tree_feature, current_point);
+      if(tree_distance < 10e-6)
+        {
+          save_feature = 0; break;
+        }
+    }
+  // constrain two neighbor features have distance bigger than 0.01 meter
+  float feature_distance = distanceL2( previous_point, current_point );
+  if( feature_distance > 0.01 && save_feature)
+    {
+      data->clicked_points_3d->push_back(current_point);
+    }
+
+  // draw clicked points in green:
+  pcl::visualization::PointCloudColorHandlerCustom<PointT> clickedColor (data->clicked_points_3d, data->ptColor[0],
+      data->ptColor[1], data->ptColor[2]);
+  data->viewerPtr->updatePointCloud(data->clicked_points_3d, clickedColor, "selected_features");
+  data->viewerPtr->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                    10, "selected_features");
+
+  // Output the information of selected features
+  char oMsg[200];
+  std::sprintf(oMsg, "Selected pt: %f %f %f.", current_point.x,
+               current_point.y, current_point.z);
+  data->txtEditor->appendPlainText( QString(oMsg) );
+  std::sprintf(oMsg, "# of selected pt: %u.", data->clicked_points_3d->points.size());
+  data->txtEditor->appendPlainText( QString(oMsg) );
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+/// func to get feature points from cloud by using Sift + Left-Click
+/////////////////////////////////////////////////////////////////////////////////////
+void
+KittiVisualizerQt::on_dennis_clickFeaturePoints_clicked()
+{
+
+  // initialize the feature points
+ strDennisParam->clicked_points_3d.reset(new PointCloudT);
+  // Output the number of selected features
+  if( strDennisParam->clicked_points_3d->size() )
+    {
+      char oMsg[200];
+      std::sprintf(oMsg, "Size of selected features: %u.", strDennisParam->clicked_points_3d->size());
+      ui->outputMsg->appendPlainText( QString(oMsg) );
+    }else{ui->outputMsg->appendPlainText("Use Shift + Left_Click to select point \n");}
+  // point to interface point cloud visualizer
+  strDennisParam->viewerPtr = pclVisualizer;
+  strDennisParam->txtEditor = ui->outputMsg;
+
+  pclVisualizer->addPointCloud(strDennisParam->clicked_points_3d, "selected_features");
+
+  // activate clickPoint callback function
+  pclVisualizer->registerPointPickingCallback (clickPoint_callback, (void*)strDennisParam);
+
+  // refresh point cloud viewer
+  pclVisualizer->updatePointCloud (strDennisParam->cloud, "dennis_loaded3d");
+  ui->qvtkWidget_pclViewer->update();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+/// func to initialize the object segmentation algorithm
+/////////////////////////////////////////////////////////////////////////////////////
+/// this function assign the input data for the object segmentation function
+void KittiVisualizerQt::on_dennis_clickedObjSeg_clicked()
+{
+  scene.reset(new PointCloudC);
+  pcl::copyPointCloud(*strDennisParam->cloud,*scene);
+  seeds.reset(new PointCloudC);
+  pcl::copyPointCloud(*strDennisParam->clicked_points_3d,*seeds);
+  on_segMovObj_clicked();
 }
