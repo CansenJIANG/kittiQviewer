@@ -54,13 +54,17 @@ LIBS += -L/usr/local/lib \
             -lpcl_stereo
 
 LIBS += -L/usr/lib \
-            -lQVTK \
+#            -lQVTK \
             -lvtkRendering \
             -lvtkIO \
             -lvtkCommon \
             -lvtkWidgets \
             -lvtkFiltering \
             -lvtkGraphics
+
+LIBS += -L/usr/lib \
+            -lQVTK
+
 LIBS += -L/usr/lib\
             -lboost_filesystem \
             -lboost_thread \

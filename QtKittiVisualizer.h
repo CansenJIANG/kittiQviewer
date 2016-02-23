@@ -120,6 +120,7 @@ public:
 
   QString loadNmots(std::vector<PointCloudC> & motSeq);
   QString loadNmots(std::vector<PointCloudC> & motSeq, const std::string fileExt);
+  QString loadNmots(std::vector<PointCloudC> & motSeq, const std::string fileExt, int colorIdx);
 
 
 public slots:
@@ -238,6 +239,14 @@ private slots:
   void on_fuseMotsSeq_clicked();
 
   void on_loadMotsFusion_clicked();
+
+  void on_stationNmots_clicked();
+
+  void on_junctionNmots_clicked();
+
+  void on_junctionLoadMots_clicked();
+
+  void on_displayMots_clicked();
 
 private:
 

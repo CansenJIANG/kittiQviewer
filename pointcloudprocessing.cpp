@@ -32,6 +32,18 @@ void PointCloudProcessing::getKnnRadius(const PointCloudC::Ptr &cloud,
     }
 }
 
+//void PointCloudProcessing::getKnnKNeighbor(const PointCloudC::Ptr &cloud,
+//                                        const PointCloudC::Ptr &ptQuery,
+//                                        const int kNeighbor,
+//                                        std::vector<s16> &neighIdx,
+//                                        std::vector<f32> &neighDist)
+//{
+//  //    std::cout<<"search radius: "<<searchRadius<<std::endl;
+//  pcl::KdTreeFLANN<PointC> kdTree;
+//  kdTree.setInputCloud(cloud);
+//  kdTree.nearestKSearch(ptQuery, kNeighbor, neighIdx, neighDist);
+//}
+
 void PointCloudProcessing::removeBadSeed(PointCloudC::Ptr &cloud,
                                          const f32 searchRadius)
 {
