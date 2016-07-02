@@ -13,8 +13,8 @@ TEMPLATE = app
 
 CONFIG +=link_pkgconfig
 CONFIG += console
-PKGCONFIG = opencv-2.4.10
-PKGCONFIG = libfreenect
+#PKGCONFIG = opencv-2.4.10
+#PKGCONFIG = libfreenect
 
 SOURCES += main.cpp\
     QtKittiVisualizer.cpp \

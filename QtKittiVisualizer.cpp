@@ -216,6 +216,16 @@ void KittiVisualizerQt::init()
   strDennisParam->ptColor[0] = 0;
   strDennisParam->ptColor[1] = 255;
   strDennisParam->ptColor[2] = 0;
+
+  //////////////////////////////////////////////////////////////////////////
+  /// SECTION FOR KITTI Odometry Mapping
+  ///
+  //////////////////////////////////////////////////////////////////////////
+  colorize_axis = 1;
+  colorize_axis_max = -1000000;
+  colorize_axis_min = 1000000;
+  odoMap_ColorMode = 0; // Rainbow colorization
+  fusedMap.reset( new pcl::PointCloud<PointC> );
 }
 KittiVisualizerQt::~KittiVisualizerQt()
 {
@@ -693,6 +703,140 @@ void KittiVisualizerQt::keyboardEventOccurred (const pcl::visualization::Keyboar
     }
 }
 
+void KittiVisualizerQt::colorCloudDistances(PointCloudC::Ptr &fusedMap, std::string saveName = "fusedMap")
+{
+  // Find the minimum and maximum values along the selected axis
+  float min = 1000000, max = -1000000;
+//   Set an initial value
+    switch (colorize_axis)
+      {
+      case 0:  // x
+        min = fusedMap->points[0].x;
+        max = fusedMap->points[0].x;
+        break;
+      case 1:  // y
+        min = fusedMap->points[0].y;
+        max = fusedMap->points[0].y;
+        break;
+      default:  // z
+        min = fusedMap->points[0].z;
+        max = fusedMap->points[0].z;
+        break;
+      }
+  std::cout<<"compute color distance...\n";
+  // Search for the minimum/maximum
+  for (PointCloudC::iterator cloud_it = fusedMap->points.begin();
+       cloud_it != fusedMap->points.end (); ++cloud_it)
+    {
+      switch (colorize_axis)
+        {
+        case 0:  // x
+          if (min > cloud_it->x)
+            min = cloud_it->x;
+
+          if (max < cloud_it->x)
+            max = cloud_it->x;
+          break;
+        case 1:  // y
+          if (min > cloud_it->y)
+            min = cloud_it->y;
+
+          if (max < cloud_it->y)
+            max = cloud_it->y;
+          break;
+        default:  // z
+          if (min > cloud_it->z)
+            min = cloud_it->z;
+
+          if (max < cloud_it->z)
+            max = cloud_it->z;
+          break;
+        }
+    }
+  std::cout<<"max = "<<max<<"; min = "<<min<<std::endl;
+  // Compute LUT scaling to fit the full histogram spectrum
+  float lut_scale = 255.0 / (max - min);  // max is 255, min is 0
+
+  if (min == max)  // In case the cloud is flat on the chosen direction (x,y or z)
+    lut_scale = 1.0;  // Avoid rounding error in boost
+
+  int i=0;
+  for (PointCloudC::iterator cloud_it = fusedMap->points.begin ();
+       cloud_it != fusedMap->points.end (); ++cloud_it)
+    {
+      int value;
+      switch (colorize_axis)
+        {
+        case 0:  // x
+          value = boost::math::iround ( (cloud_it->x - min) * lut_scale);  // Round the number to the closest integer
+          break;
+        case 1:  // y
+          value = boost::math::iround ( (cloud_it->y - min) * lut_scale);
+          break;
+        default:  // z
+          value = boost::math::iround ( (cloud_it->z - min) * lut_scale);
+          break;
+        }
+
+      // Apply color to the cloud
+      switch (odoMap_ColorMode)
+        {
+        case 0:
+          // Blue -> Green -> Red (~ rainbow)
+          cloud_it->r = int( value > 128 ? (value - 128) * 2 : 0 );  // r[128] = 0, r[255] = 255
+          cloud_it->g = int( value < 128 ? 2 * value : 255 - ( (value - 128) * 2) );  // g[0] = 0, g[128] = 255, g[255] = 0
+          cloud_it->b = int( value < 128 ? 255 - (2 * value) : 0 );  // b[0] = 255, b[128] = 0
+          break;
+        case 1:
+          // Blue (= min) -> Red (= max)
+          cloud_it->r = int( value );
+          cloud_it->g = int( 0 );
+          cloud_it->b = int( 255 - value );
+          break;
+        case 2:
+          // Green (= min) -> Magenta (= max)
+          cloud_it->r = int( value );
+          cloud_it->g = int( 255 - value );
+          cloud_it->b = int( value );
+          break;
+        case 3:
+          // White (= min) -> Red (= max)
+          cloud_it->r = int( 255 );
+          cloud_it->g = int( 255 - value );
+          cloud_it->b = int( 255 - value );
+          break;
+        case 4:
+          // Grey (< 128) / Red (> 128)
+          if (value > 128)
+            {
+              cloud_it->r = 255;
+              cloud_it->g = 0;
+              cloud_it->b = 0;
+            }
+          else
+            {
+              cloud_it->r = 0;//128;
+              cloud_it->g = 128;
+              cloud_it->b = 0;//128;
+            }
+          break;
+        default:
+          // Blue -> Green -> Red (~ rainbow)
+          cloud_it->r = int( value > 128 ? (value - 128) * 2 : 0 );  // r[128] = 0, r[255] = 255
+          cloud_it->g = int( value < 128 ? 2 * value : 255 - ( (value - 128) * 2) );  // g[0] = 0, g[128] = 255, g[255] = 0
+          cloud_it->b = int( value < 128 ? 255 - (2 * value) : 0 );  // b[0] = 255, b[128] = 0
+        }
+//      if(i>3000 && i<3010){std::cout<<"rgb values: "<<int(cloud_it->r)<<", "<<int(cloud_it->g)<<", "<<int(cloud_it->b)<<", "<<value<<"\n";}
+//      if(int(cloud_it->r)==255 && int(cloud_it->g)==255 && int(cloud_it->b)==255) {std::cout<<i<<"; ";}
+      i++;
+    }
+  std::string saveNamePly; saveNamePly = saveName + ".ply";
+  std::string saveNamePcd; saveNamePcd = saveName + ".pcd";
+  pcl::io::savePLYFileASCII(saveNamePly,*fusedMap);
+  pcl::io::savePCDFileASCII(saveNamePcd,*fusedMap);
+}
+
+
 void getHeatMapColor(float value, float &red, float &green, float &blue)
 {
   const int NUM_COLORS = 4;
@@ -748,6 +892,7 @@ void KittiVisualizerQt::on_loadPc_clicked()
           file.read((char *) &point.x, 3*sizeof(float));
           file.read((char *) &point.intensity, sizeof(float));
           pointCloud->push_back(point);
+          //          if(i<10) {std::cout<<"point xyz: "<<point.x<<", "<<point.y<<", "<<point.z<<std::endl;}
         }
       file.close();
     }
@@ -785,6 +930,9 @@ void KittiVisualizerQt::on_loadPc_clicked()
   pclVisualizer->addPointCloud(colorCloud, "newPc");
   //    pclVisualizer->updatePointCloud<KittiPoint>(pointCloud, colorHandler,"newPc");
   ui->qvtkWidget_pclViewer->update();
+
+  pcl::io::savePLYFileASCII("/home/jiang/CvDataset/KITTI/sceneOrg.ply", *colorCloud);
+
 }
 
 PointCloudC::Ptr
@@ -953,6 +1101,7 @@ void KittiVisualizerQt::on_loadTrkPts_clicked()
   pclVisualizer->addPointCloud(colorTrk, "colorTrk");
   pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                   3.5, "colorTrk");
+  pcl::copyPointCloud(*colorTrk, *scene);
   ui->qvtkWidget_pclViewer->update();
 }
 
@@ -1139,9 +1288,9 @@ void KittiVisualizerQt::on_segMovObj_clicked()
     }
   /// Use clicked points as seeds
   else if (seeds->points.size()>1)
-  {
-    ui->outputMsg->appendPlainText("Use clicked points as seeds for segmentation...\n");
-  }
+    {
+      ui->outputMsg->appendPlainText("Use clicked points as seeds for segmentation...\n");
+    }
   else{
       seeds->points.clear();
       // load seeds
@@ -1159,19 +1308,19 @@ void KittiVisualizerQt::on_segMovObj_clicked()
 
   PointCloudProcessing segMot;
   std::cout<<"start region growing...\n";
-  segMot.removeBadSeed(seeds, searchRadius);
+  //  segMot.removeBadSeed(seeds, searchRadius);
   segMot.pclRegionGrow(scene, seeds, growSpeed, searchRadius, heightThd, cloudSeg, clusterIdx);
   std::cout<<"cluster size: "<<cloudSeg->points.size();
   pclVisualizer->removePointCloud("segMot");
-  pcl::visualization::PointCloudColorHandlerCustom<PointC> cloudSegCH(cloudSeg, 255, 0, 0);
+  pcl::visualization::PointCloudColorHandlerCustom<PointC> cloudSegCH(cloudSeg, 0, 255, 0);
   pclVisualizer->addPointCloud<PointC>(cloudSeg, cloudSegCH, "segMot");
   pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
-                                                  5, "segMot");
+                                                  3.5, "segMot");
 
   /// Save the segmented point cloud
   pcl::io::savePCDFileASCII("/home/jiang/Documents/Paper_Proposals/High_Quality_3dReconstruction/segMot.pcd",
                             *cloudSeg);
-/* If activated, you need to give the second seeds
+  /* If activated, you need to give the second seeds
  *
   PointCloudC::Ptr seed2(new PointCloudC);
   PointCloudC::Ptr cloudSeg2(new PointCloudC);
@@ -1457,6 +1606,61 @@ void KittiVisualizerQt::on_FoV3d2d_clicked()
   ui->qvtkWidget_pclViewer->update();
 }
 
+
+void KittiVisualizerQt::on_addColorCloud_clicked()
+{
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
+                                                  "/home/jiang/CvDataset/CVPR2016", \
+                                                  tr("Files (*.pcd)"));
+
+  str2SceneRansacParams->sceneRefName = fileName.toStdString();
+  if(fileName.size()<1)
+    {
+      std::cout<<"color cloud not loaded ...\n";
+      return;
+    }
+  colorCloud->points.clear();
+  colorCloud = loadPointClouds(str2SceneRansacParams->sceneRefName);
+  pclVisualizer->addPointCloud(colorCloud, fileName.toStdString().c_str());
+
+  str2SceneRansacParams->registLength = QInputDialog::getInt(0, "PointCloud Registration",
+                                                             "length of sequence:", 1);
+  int fileNamelen = str2SceneRansacParams->sceneRefName.length();
+
+  std::cout<<"fileNamelen: "<<fileNamelen<<std::endl;
+
+  std::string basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-4);
+  std::cout<<"basedDir:\n"<<basedDir<<std::endl;
+  str2SceneRansacParams->registeredScene.reset(new PointCloudC);
+  pcl::copyPointCloud(*colorCloud, *str2SceneRansacParams->registeredScene);
+  for(int i=0; i<str2SceneRansacParams->registLength; i++)
+    {
+      std::string refIdx= str2SceneRansacParams->sceneRefName.substr(fileNamelen-7, fileNamelen-5);
+      basedDir = str2SceneRansacParams->sceneRefName.substr(0, fileNamelen-7);
+      int rIdx = std::atoi(refIdx.c_str()); ++rIdx;
+      char buffer[256]; sprintf(buffer, "%03d", rIdx);
+      std::string newIdx(buffer);
+      str2SceneRansacParams->sceneNewName    = basedDir + newIdx + ".pcd";
+      str2SceneRansacParams->sceneRefName = str2SceneRansacParams->sceneNewName;
+      std::cout<<"sceneNewName:\n"<<str2SceneRansacParams->sceneNewName<<std::endl;
+      str2SceneRansacParams->sceneNew.reset(new PointCloudC);
+      str2SceneRansacParams->sceneNew = loadPointClouds(str2SceneRansacParams->sceneNewName);
+
+      for(int i=0; i<str2SceneRansacParams->sceneNew->points.size(); i++)
+        {
+          PointC pointSeg = str2SceneRansacParams->sceneNew-> points.at(i);
+          str2SceneRansacParams->registeredScene->points.push_back(pointSeg);
+        }
+      str2SceneRansacParams->registeredScene->width = 1;
+      str2SceneRansacParams->registeredScene->height = str2SceneRansacParams->registeredScene->points.size();
+    }
+  pclVisualizer->addPointCloud(str2SceneRansacParams->registeredScene, "registered");
+  pclVisualizer->setPointCloudRenderingProperties(
+        pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "registered");
+
+  pcl::io::savePLYFileASCII("/home/jiang/CvDataset/CVPR2016/sceneRegist.ply", *str2SceneRansacParams->registeredScene);
+  ui->qvtkWidget_pclViewer->update();
+}
 void KittiVisualizerQt::on_addFoV3d2d_clicked()
 {
   PointCloudC::Ptr addFoV3d2d(new PointCloudC);
@@ -1490,9 +1694,9 @@ void KittiVisualizerQt::on_addFoV3d2d_clicked()
       float rgbValue[3] = {.0, .0, .0};
       float colorValue = (colorPt->z - min_pt.z)/minMax;
       getHeatMapColor(colorValue, rgbValue[0], rgbValue[1], rgbValue[2]);
-      colorPt->r = int(rgbValue[0]);
-      colorPt->g = int(rgbValue[1]);
-      colorPt->b = int(rgbValue[2]);
+      colorPt->r = 255;//int(rgbValue[0]);
+      colorPt->g = 0;//int(rgbValue[1]);
+      colorPt->b = 0;//int(rgbValue[2]);
     }
   std::cout<<"addFoV3d2d size: "<< addFoV3d2d->points.size()<<std::endl;
   pclVisualizer->addPointCloud(addFoV3d2d, fileName.toStdString().c_str());
@@ -1945,6 +2149,7 @@ void KittiVisualizerQt::on_seqRegist_clicked()
   pclVisualizer->removePointCloud(str2SceneRansacParams->motSeedsRefName.c_str());
   pclVisualizer->removePointCloud(str2SceneRansacParams->corrRefName.c_str());
 
+  // Normalize point cloud to zero mean + norm 1
   registrationObj.normalizePointClouds(str2SceneRansacParams->corrRef,
                                        str2SceneRansacParams->normalizationMat);
   //    std::cout<<"normalization transmat: "<<str2SceneRansacParams->normalizationMat<<"\n";
@@ -1965,7 +2170,7 @@ void KittiVisualizerQt::on_seqRegist_clicked()
   //    while(loopCondition)
   for(int i=0; i<str2SceneRansacParams->registLength; i++)
     {
-      /// save transformation matrix ///
+      /// save normalization matrix ///
       for(int i=0; i<4; i++)
         {
           for(int j=0; j<4; j++)
@@ -3100,6 +3305,8 @@ void KittiVisualizerQt::on_mapTexture_clicked()
   cloudRGB = loadPointClouds(fileName);
   fileName = fileName.substr(0, fileName.length()-4) + "_textured.pcd";
   pcl::io::savePCDFileASCII(fileName.c_str(), *cloudRGB);
+  pcl::io::savePLYFileASCII("/home/jiang/DennisKittiData/movingObjects/texturedMap.ply", *cloudRGB);
+
 }
 
 //void KittiVisualizerQt::removeMotCorrespondences()
@@ -4775,7 +4982,7 @@ void KittiVisualizerQt::on_displayMots_clicked()
     {
       fusedCloud->points.push_back(motsAll->points.at(j));
     }
-//  pcl::concatenateFields(*fusedCloud, *motsAll, *fusedCloud);
+  //  pcl::concatenateFields(*fusedCloud, *motsAll, *fusedCloud);
   fusedCloud->width = 1; fusedCloud->height = fusedCloud->points.size();
 
 
@@ -4784,10 +4991,10 @@ void KittiVisualizerQt::on_displayMots_clicked()
   ///
   // load last frame transMat
 
-      QString refTransfileName;
-      refTransfileName = QFileDialog::getOpenFileName(this, tr("load last frame transMat ..."),
-                                                      "/home/jiang/CvDataset/CVPR2016/", \
-                                                      tr("Files (*.txt)"));
+  QString refTransfileName;
+  refTransfileName = QFileDialog::getOpenFileName(this, tr("load last frame transMat ..."),
+                                                  "/home/jiang/CvDataset/CVPR2016/", \
+                                                  tr("Files (*.txt)"));
 
   std::ifstream refTransMatFile(refTransfileName.toStdString().c_str());
   Eigen::Matrix4f refTransMat; refTransMat.setZero();
@@ -4797,17 +5004,17 @@ void KittiVisualizerQt::on_displayMots_clicked()
         }
     }
   std::cout<<"loaded refTransMat: "<<refTransMat<<"\n";
- Eigen::Matrix4f refTransMat_inv = refTransMat.inverse();
- std::cout<<"loaded refTransMat: "<<refTransMat_inv<<"\n";
+  Eigen::Matrix4f refTransMat_inv = refTransMat.inverse();
+  std::cout<<"loaded refTransMat: "<<refTransMat_inv<<"\n";
 
   // load ref frame normalization mat
 
-      QString refNrmlfileName;
-      refNrmlfileName = QFileDialog::
-          getOpenFileName(this,
-                          tr("load reference frame normalization Mat ..."),
-                          "/home/jiang/CvDataset/CVPR2016/",
-                          tr("Files (*.txt)"));
+  QString refNrmlfileName;
+  refNrmlfileName = QFileDialog::
+      getOpenFileName(this,
+                      tr("load reference frame normalization Mat ..."),
+                      "/home/jiang/CvDataset/CVPR2016/",
+                      tr("Files (*.txt)"));
   std::ifstream refNrmlFile(refNrmlfileName.toStdString().c_str());
   Eigen::Matrix4f refNrmlMat; refNrmlMat.setZero();
   for (int i = 0; i < 4; ++i) {
@@ -4832,10 +5039,10 @@ void KittiVisualizerQt::on_displayMots_clicked()
 //////////////////////////////////////////////////////////////////////////
 void KittiVisualizerQt::on_dennis_loadKitti3D_clicked()
 {
-// function to load 3D data from .bin file
+  // function to load 3D data from .bin file
   QString fileName =
       QFileDialog::getOpenFileName(this, tr("Open File"),
-      "/home/jiang/CvDataset/KITTI/tracking_module/training/velodyne", \
+                                   "/home/jiang/CvDataset/KITTI/tracking_module/training/velodyne", \
                                    tr("Files (*.bin)"));
   std::fstream file(fileName.toStdString().c_str(), std::ios::in | std::ios::binary);
   if(file.good()){
@@ -4891,6 +5098,9 @@ void KittiVisualizerQt::on_dennis_loadKitti3D_clicked()
   pclVisualizer->addPointCloud(strDennisParam->cloud, "dennis_loaded3d");
   ///    pclVisualizer->updatePointCloud<KittiPoint>(pointCloud, colorHandler,"newPc");
   ui->qvtkWidget_pclViewer->update();
+  pcl::PointCloud<pcl::PointXYZ> saveDennisCloud;
+  pcl::copyPointCloud(*pointCloud, saveDennisCloud);
+  pcl::io::savePCDFileASCII("saveDennisCloud.pcd", saveDennisCloud);
 }
 
 
@@ -4954,8 +5164,8 @@ clickPoint_callback (const pcl::visualization::PointPickingEvent& event, void* a
     }
 
   // draw clicked points in green:
-  pcl::visualization::PointCloudColorHandlerCustom<PointT> clickedColor (data->clicked_points_3d, data->ptColor[0],
-      data->ptColor[1], data->ptColor[2]);
+  pcl::visualization::PointCloudColorHandlerCustom<PointT> clickedColor (data->clicked_points_3d, 0,0,0); //(data->clicked_points_3d, data->ptColor[0],
+  //data->ptColor[1], data->ptColor[2]);
   data->viewerPtr->updatePointCloud(data->clicked_points_3d, clickedColor, "selected_features");
   data->viewerPtr->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
                                                     10, "selected_features");
@@ -4978,7 +5188,7 @@ KittiVisualizerQt::on_dennis_clickFeaturePoints_clicked()
 {
 
   // initialize the feature points
- strDennisParam->clicked_points_3d.reset(new PointCloudT);
+  strDennisParam->clicked_points_3d.reset(new PointCloudT);
   // Output the number of selected features
   if( strDennisParam->clicked_points_3d->size() )
     {
@@ -5006,9 +5216,289 @@ KittiVisualizerQt::on_dennis_clickFeaturePoints_clicked()
 /// this function assign the input data for the object segmentation function
 void KittiVisualizerQt::on_dennis_clickedObjSeg_clicked()
 {
+  // copy the scene from the loaded point cloud
   scene.reset(new PointCloudC);
   pcl::copyPointCloud(*strDennisParam->cloud,*scene);
+  // copy the seeds from clicked points
   seeds.reset(new PointCloudC);
   pcl::copyPointCloud(*strDennisParam->clicked_points_3d,*seeds);
+
+  // call the function to segment the object
   on_segMovObj_clicked();
+}
+
+void KittiVisualizerQt::on_loadsomething_clicked()
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr trkPts(new pcl::PointCloud<pcl::PointXYZ>);
+  // load *.pcd file
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
+                                                  "/home/jiang/CvTools/\
+                                                  DeepFlow_release2.0",
+                                                  tr("Files (*.pcd)"));
+  if(fileName.size()<1)
+    {
+      std::cout<<"trkPts not loaded ...\n";
+      return;
+    }
+  pcl::io::loadPCDFile<pcl::PointXYZ>(fileName.toStdString(), *trkPts);
+  //    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ>
+  // trkcolorHandler(trkPts, 0, 255, 0);
+  //    pclVisualizer->addPointCloud<pcl::PointXYZ>(trkPts, trkcolorHandler, "trkPts");
+  //    pclVisualizer->setPointCloudRenderingProperties(
+  // pcl::visualization::PCL_VISUALIZER_POINT_SIZE,  5, "trkPts");
+
+
+  colorTrk.reset(new PointCloudC);
+  pcl::copyPointCloud(*trkPts, *colorTrk);
+  if(colorOpt[0]==0 && colorOpt[1]==0 && colorOpt[2]==0)
+    {
+      for(int i=0; i<colorTrk->points.size();i++)
+        {
+          PointC *colorPt = &colorTrk->points.at(i);
+          int rgbValue[3] = {255, 0, 0};
+          //            getValueBetweenTwoFixedColors(colorPt->x, rgbValue[0],
+          //  rgbValue[1], rgbValue[2]);
+          colorPt->r = int(rgbValue[0]);
+          colorPt->g = int(rgbValue[1]);
+          colorPt->b = int(rgbValue[2]);
+        }
+    }
+  else
+    {
+      for(int i=0; i<colorTrk->points.size();i++)
+        {
+          PointC *colorPt = &colorTrk->points.at(i);
+          colorPt->r = colorOpt[0];
+          colorPt->g = colorOpt[1];
+          colorPt->b = colorOpt[2];
+        }
+    }
+  pclVisualizer->addPointCloud(colorTrk, "colorTrk");
+  pcl::copyPointCloud(*colorTrk, *scene);
+  pclVisualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE,
+                                                  3.5, "colorTrk");
+  ui->qvtkWidget_pclViewer->update();
+  pcl::io::savePLYFileASCII("/home/jiang/CvTools/DenseOpticalFlow/OpticalFlow_CeLiu/MSresult/people1car1_10_20/traj.ply", *colorTrk);
+
+}
+
+void KittiVisualizerQt::on_loadIntensityCloud_clicked()
+{
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
+                                                  "/home/jiang/CvTools/DeepFlow_release2.0", \
+                                                  tr("Files (*.pcd)"));
+
+  if(fileName.size()<1)
+    {
+      std::cout<<"FoV3d2d point cloud not loaded ...\n";
+      return;
+    }
+  pcl::PointCloud<pcl::PointXYZI> intensityCloud;
+  intensityCloud.points.clear();
+  pcl::io::loadPCDFile<pcl::PointXYZI>(fileName.toStdString(), intensityCloud);
+  pcl::copyPointCloud(intensityCloud, *colorCloud);
+  // get minimum and maximum
+  PointC min_pt, max_pt;
+  pcl::getMinMax3D(*colorCloud, min_pt, max_pt);
+  float minMax = max_pt.y + 2.0;
+  for(int i=0; i<colorCloud->points.size();i++)
+    {
+      PointC *colorPt = &colorCloud->points.at(i);
+      float rgbValue[3] = {.0, .0, .0};
+      float colorValue = (colorPt->y - min_pt.y)/minMax;
+      getHeatMapColor(colorValue, rgbValue[0], rgbValue[1], rgbValue[2]);
+      colorPt->r = int(rgbValue[0]);
+      colorPt->g = int(rgbValue[1]);
+      colorPt->b = int(rgbValue[2]);
+    }
+  pclVisualizer->removePointCloud("fusedMap_kittiOdometry");
+  pcl::copyPointCloud(*colorCloud, *fusedMap);
+//    colorCloudDistances(fusedMap);
+  pclVisualizer->addPointCloud(fusedMap, "fusedMap_kittiOdometry");
+  ui->qvtkWidget_pclViewer->update();
+  pcl::PointCloud<pcl::PointXYZ> xyzCloud;
+  pcl::copyPointCloud(*colorCloud, xyzCloud);
+  pcl::io::savePCDFileASCII(fileName.toStdString().c_str(), xyzCloud);
+}
+
+void KittiVisualizerQt::on_loadIntensityCloudFolder_clicked()
+{
+  bool voxelFilterFlag = false;
+  QStringList fileNames = QFileDialog::getOpenFileNames(
+        this,
+        "Select one or more files to open",
+        "/home/jiang/catkin_ws/results/kitti_odom_regist_00_2016-06-22-17-23-10_pcd",
+        "PCD files (*.pcd)");
+  std::cout<<"loaded "<<fileNames.size()<<"files\n";
+  if(fileNames.size()>50){voxelFilterFlag = true;}
+  pcl::PointCloud<pcl::PointXYZI>::Ptr intensityCloud(new pcl::PointCloud<pcl::PointXYZI>);
+//  pcl::PointCloud<pcl::PointXYZRGB>::Ptr fusedMap(new pcl::PointCloud<pcl::PointXYZRGB>);
+  intensityCloud->points.clear();  //colorCloud->points.clear();
+  fusedMap->points.clear();
+
+  for(int i=0; i<fileNames.size(); i++)
+    {
+      QString fileName = fileNames.at(i);
+
+      if(fileName.size()<1)
+        {
+          std::cout<<"Point cloud not exists ...\n";
+          return;
+        }
+
+      intensityCloud->clear();
+      pcl::io::loadPCDFile<pcl::PointXYZI>(fileName.toStdString(), *intensityCloud);
+      //    pcl::copyPointCloud(intensityCloud, *colorCloud);
+      std::vector<int> nanIdx;
+      pcl::removeNaNFromPointCloud(*intensityCloud, *intensityCloud, nanIdx);
+      for(int j=0; j<intensityCloud->points.size(); j++)
+        {
+          PointC pt;
+          pt.x = intensityCloud->points.at(j).x;
+          pt.y = intensityCloud->points.at(j).y;
+          pt.z = intensityCloud->points.at(j).z;
+          pt.r = 0;
+          pt.r = 125;
+          pt.r = 0;
+          if(pt.y<-1.8)      continue;
+          fusedMap->points.push_back(pt);
+        }
+      fusedMap->width = 1;
+      fusedMap->height = fusedMap->points.size();
+
+      pcl::VoxelGrid<pcl::PointXYZRGB> grid;
+      if (voxelFilterFlag && (i%5 == 0) )
+        {
+          grid.setLeafSize (0.05, 0.05, 0.05);
+          grid.setInputCloud(fusedMap);
+          grid.filter (*fusedMap);
+        }
+
+      if((i+1)%250 == 0)
+        {
+          char saveName[200]; std::sprintf(saveName, "fusedMap_%06d", i);
+          colorCloudDistances(fusedMap, saveName);
+          std::cout<<"point cloud size: "<<fusedMap->points.size()<<"\n";
+          fusedMap->clear();
+        }
+    }
+  char cloudName[200];
+  std::sprintf(cloudName, "fusedMap_kittiOdometry");
+  char saveName[200]; std::sprintf(saveName, "fusedMap_%06d", fusedMap->points.size());
+  colorCloudDistances(fusedMap, saveName);
+
+  pclVisualizer->addPointCloud<pcl::PointXYZRGB>(fusedMap,cloudName);
+  ui->qvtkWidget_pclViewer->update();
+}
+
+void KittiVisualizerQt::on_colorize_X_clicked()
+{
+  colorize_axis = 0;
+  if(fusedMap->height <3)
+    {return;}
+  colorCloudDistances(fusedMap);
+  pclVisualizer->removePointCloud("fusedMap_kittiOdometry");
+  pclVisualizer->addPointCloud<pcl::PointXYZRGB>(fusedMap, "fusedMap_kittiOdometry");
+  ui->qvtkWidget_pclViewer->update();
+}
+
+void KittiVisualizerQt::on_colorize_Y_clicked()
+{
+  colorize_axis = 1;
+  if(fusedMap->points.size() < 3)
+    {return;}
+  colorCloudDistances(fusedMap);
+  pclVisualizer->removePointCloud("fusedMap_kittiOdometry");
+  pclVisualizer->addPointCloud<pcl::PointXYZRGB>(fusedMap, "fusedMap_kittiOdometry");
+  ui->qvtkWidget_pclViewer->update();
+}
+void KittiVisualizerQt::on_colorize_Z_clicked()
+{
+  colorize_axis = 2;
+  if(fusedMap->height<3)
+    {return;}
+  colorCloudDistances(fusedMap);
+  pclVisualizer->removePointCloud("fusedMap_kittiOdometry");
+  pclVisualizer->addPointCloud<pcl::PointXYZRGB>(fusedMap, "fusedMap_kittiOdometry");
+  ui->qvtkWidget_pclViewer->update();
+}
+
+void KittiVisualizerQt::on_odoMap_ColorMode_currentIndexChanged(int index)
+{
+  odoMap_ColorMode = ui->odoMap_ColorMode->currentIndex();
+  std::cout<<"current color mode: "<<odoMap_ColorMode<<"cloudsize: "<<fusedMap->height<<"\n";
+  if(fusedMap->height<3)
+    {return;}
+  colorCloudDistances(fusedMap);
+  pclVisualizer->removePointCloud("fusedMap_kittiOdometry");
+  pclVisualizer->addPointCloud<pcl::PointXYZRGB>(fusedMap, "fusedMap_kittiOdometry");
+  ui->qvtkWidget_pclViewer->update();
+}
+
+void KittiVisualizerQt::on_convertIntensityCloud_clicked()
+{
+  QStringList fileNames = QFileDialog::getOpenFileNames(
+        this,
+        "Select one or more files to open",
+        "/home/jiang/catkin_ws/results/",
+        "PCD files (*.pcd)");
+  std::cout<<"loaded "<<fileNames.size()<<"files\n";
+  pcl::PointCloud<pcl::PointXYZI>::Ptr intensityCloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr convertPointXYZ(new pcl::PointCloud<pcl::PointXYZ>);
+
+  for(int i=0; i<fileNames.size(); i++)
+    {
+      QString fileName = fileNames.at(i);
+
+      if(fileName.size()<1)
+        {
+          std::cout<<"Point cloud not exists ...\n";
+          return;
+        }
+
+      intensityCloud->clear();
+      convertPointXYZ->clear();
+      pcl::io::loadPCDFile<pcl::PointXYZI>(fileName.toStdString(), *intensityCloud);
+      for(int j=0; j<intensityCloud->points.size();j++)
+        {
+          pcl::PointXYZ pt(0.0, 0.0, 0.0);
+          pt.y = intensityCloud->points.at(j).x;
+          pt.z = intensityCloud->points.at(j).y;
+          pt.x = intensityCloud->points.at(j).z;
+          convertPointXYZ->points.push_back(pt);
+        }
+      convertPointXYZ->width = 1;
+      convertPointXYZ->height = convertPointXYZ->points.size();
+//      pcl::copyPointCloud(*intensityCloud, *convertPointXYZ);
+      pcl::io::savePCDFileASCII(fileName.toStdString().c_str(), *convertPointXYZ);
+    }
+}
+
+void KittiVisualizerQt::on_convertIntensityCloud_Org_clicked()
+{
+  QStringList fileNames = QFileDialog::getOpenFileNames(
+        this,
+        "Select one or more files to open",
+        "/home/jiang/catkin_ws/results/",
+        "PCD files (*.pcd)");
+  std::cout<<"loaded "<<fileNames.size()<<"files\n";
+  pcl::PointCloud<pcl::PointXYZI>::Ptr intensityCloud(new pcl::PointCloud<pcl::PointXYZI>);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr convertPointXYZ(new pcl::PointCloud<pcl::PointXYZ>);
+
+  for(int i=0; i<fileNames.size(); i++)
+    {
+      QString fileName = fileNames.at(i);
+
+      if(fileName.size()<1)
+        {
+          std::cout<<"Point cloud not exists ...\n";
+          return;
+        }
+
+      intensityCloud->clear();
+      convertPointXYZ->clear();
+      pcl::io::loadPCDFile<pcl::PointXYZI>(fileName.toStdString(), *intensityCloud);
+      pcl::copyPointCloud(*intensityCloud, *convertPointXYZ);
+      pcl::io::savePCDFileASCII(fileName.toStdString().c_str(), *convertPointXYZ);
+    }
 }

@@ -179,6 +179,8 @@ private slots:
 
   void on_loadColorCloud_clicked();
 
+  void on_addColorCloud_clicked();
+
   void on_FoV3d2d_clicked();
 
   void on_addFoV3d2d_clicked();
@@ -271,6 +273,23 @@ private slots:
 
   void on_dennis_clickedObjSeg_clicked(); // segment the selected object using region growing technique
 
+  void on_loadsomething_clicked();
+
+
+  void on_loadIntensityCloud_clicked();
+
+  void on_loadIntensityCloudFolder_clicked();
+
+  void on_colorize_X_clicked();
+  void on_colorize_Y_clicked();
+  void on_colorize_Z_clicked();
+
+  void on_odoMap_ColorMode_currentIndexChanged(int index);
+
+  void on_convertIntensityCloud_clicked();
+
+  void on_convertIntensityCloud_Org_clicked();
+
 private:
 
   int parseCommandLineOptions(int argc, char** argv);
@@ -339,6 +358,17 @@ private:
   //////////////////////////////////////////////////////////////////////////
   str_DennisParam *strDennisParam; // create the structure for variables' control
 
+
+  //////////////////////////////////////////////////////////////////////////
+  /// SECTION FOR KITTI Odometry Visualization
+  ///
+  //////////////////////////////////////////////////////////////////////////
+  int colorize_axis;
+  float colorize_axis_max;
+  float colorize_axis_min;
+  pcl::PointCloud<PointC>::Ptr fusedMap;
+  int odoMap_ColorMode;
+  void colorCloudDistances(PointCloudC::Ptr &fusedMap, std::string saveName);
 };
 
 #endif // QT_KITTI_VISUALIZER_H
